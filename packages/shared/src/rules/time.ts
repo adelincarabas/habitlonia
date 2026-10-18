@@ -69,12 +69,33 @@ export function weekOf(date: Date): Date[] {
 
 export const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
 
-export function greetingFor(date: Date): string {
+export type DayPeriod = 'morning' | 'afternoon' | 'evening' | 'night';
+
+/** Local-time part of the day: night runs 22:00-04:59. */
+export function dayPeriod(date: Date): DayPeriod {
   const h = date.getHours();
-  if (h < 5) return 'Good night';
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 5) return 'night';
+  if (h < 12) return 'morning';
+  if (h < 18) return 'afternoon';
+  if (h < 22) return 'evening';
+  return 'night';
+}
+
+/** True from evening until morning, when the sky is dark. */
+export const isDarkOut = (date: Date) => {
+  const period = dayPeriod(date);
+  return period === 'evening' || period === 'night';
+};
+
+const GREETINGS: Record<DayPeriod, string> = {
+  morning: 'Good morning',
+  afternoon: 'Good afternoon',
+  evening: 'Good evening',
+  night: 'Good night',
+};
+
+export function greetingFor(date: Date): string {
+  return GREETINGS[dayPeriod(date)];
 }
 
 /** 13419 -> "3:43:39" */

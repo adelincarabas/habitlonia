@@ -5,12 +5,11 @@ import { ApiProvider } from '@habitlonia/shared/hooks';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { colorScheme } from 'nativewind';
-import { useEffect, useState } from 'react';
-import { Platform, useColorScheme } from 'react-native';
+import { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { apiClient } from '@/lib/api';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { ThemePreferenceProvider } from '@/lib/theme-preference';
 
 function RootStack() {
   const { state } = useAuth();
@@ -39,12 +38,6 @@ function RootStack() {
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
   const [fontsLoaded] = useFonts({ Caveat_600SemiBold });
-  const systemScheme = useColorScheme();
-
-  // Native follows the system theme on its own; on web, 'class' dark mode needs <html class="dark"> set by hand.
-  useEffect(() => {
-    if (Platform.OS === 'web') colorScheme.set(systemScheme === 'dark' ? 'dark' : 'light');
-  }, [systemScheme]);
 
   if (!fontsLoaded) return null;
 
@@ -52,10 +45,12 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <ApiProvider client={apiClient}>
-          <AuthProvider>
-            <StatusBar style="auto" />
-            <RootStack />
-          </AuthProvider>
+          <ThemePreferenceProvider>
+            <AuthProvider>
+              <StatusBar style="auto" />
+              <RootStack />
+            </AuthProvider>
+          </ThemePreferenceProvider>
         </ApiProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

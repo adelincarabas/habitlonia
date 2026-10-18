@@ -1,22 +1,27 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { greetingFor, isDarkOut } from '@habitlonia/shared';
 import { Pressable, Text, View } from 'react-native';
 import { useThemeColors } from '@/lib/theme';
 import { IconButton } from './IconButton';
 
-type Props = { greeting: string; name: string; onLedger?: () => void; onHistory?: () => void };
+type Props = { now: Date; name: string; onLedger?: () => void; onHistory?: () => void };
 
-export function GreetingRow({ greeting, name, onLedger, onHistory }: Props) {
+export function GreetingRow({ now, name, onLedger, onHistory }: Props) {
   const colors = useThemeColors();
 
   return (
     <View className="flex-row items-center gap-2 px-4">
       <View className="flex-1">
         <Text className="font-hand text-3xl text-ink">
-          {greeting}, {name}.
+          {greetingFor(now)}, {name}.
         </Text>
         <View className="-mt-1 h-0.5 w-40 rounded-full bg-ink" />
       </View>
-      <Ionicons name="sunny" size={22} color="#F2B705" />
+      {isDarkOut(now) ? (
+        <Ionicons name="moon" size={20} color="#8E9BE8" accessibilityLabel="Night" />
+      ) : (
+        <Ionicons name="sunny" size={22} color="#F2B705" accessibilityLabel="Day" />
+      )}
       <IconButton icon="time-outline" label="History" onPress={onHistory} />
       <Pressable
         onPress={onLedger}

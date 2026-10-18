@@ -1,5 +1,5 @@
-import { TODAY_TABS, defaultKindForTab, greetingFor, toDateKey, weekOf, type TodayTabKey } from '@habitlonia/shared';
-import { useToday, useTodayEntries, useToggleFocus } from '@habitlonia/shared/hooks';
+import { TODAY_TABS, defaultKindForTab, toDateKey, weekOf, type TodayTabKey } from '@habitlonia/shared';
+import { useNow, useToday, useTodayEntries, useToggleFocus } from '@habitlonia/shared/hooks';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
@@ -21,6 +21,7 @@ export default function TodayScreen() {
   const today = useToday(selectedDay);
   const entries = useTodayEntries(today.data, tab);
   const toggleFocus = useToggleFocus();
+  const now = useNow();
   const { state } = useAuth();
   const name = state.status === 'signedIn' ? state.user.name : '';
 
@@ -63,7 +64,7 @@ export default function TodayScreen() {
 
           {today.data && (
             <>
-              <GreetingRow greeting={greetingFor(new Date())} name={name} />
+              <GreetingRow now={now} name={name} />
               <Timeline entries={entries} />
             </>
           )}

@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/IconButton';
+import { SegmentedTabs } from '@/components/SegmentedTabs';
 import { useAuth } from '@/lib/auth';
+import { THEME_OPTIONS, useThemePreference } from '@/lib/theme-preference';
 
 function close() {
   if (router.canGoBack()) router.back();
@@ -12,6 +14,7 @@ function close() {
 
 export default function ProfileScreen() {
   const { state, signOut } = useAuth();
+  const { preference, setPreference } = useThemePreference();
   const [signingOut, setSigningOut] = useState(false);
 
   // The root layout swaps to the login screen once the session is gone.
@@ -40,6 +43,11 @@ export default function ProfileScreen() {
           </View>
           <Text className="mt-2 font-hand text-4xl text-ink">{user.name}</Text>
           <Text className="text-ink-muted">{user.email}</Text>
+        </View>
+
+        <View className="gap-2 pt-10">
+          <Text className="px-5 text-sm text-ink-muted">Theme</Text>
+          <SegmentedTabs tabs={THEME_OPTIONS} value={preference} onChange={setPreference} />
         </View>
 
         <View className="mt-auto px-6 pb-6">

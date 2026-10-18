@@ -7,6 +7,7 @@ import {
   formatSpan,
   fromDateKey,
   greetingFor,
+  isDarkOut,
   parseClock,
   weekOf,
 } from './time';
@@ -36,7 +37,17 @@ describe('time rules', () => {
 
   it('greets by time of day', () => {
     expect(greetingFor(new Date(2026, 0, 1, 8))).toBe('Good morning');
+    expect(greetingFor(new Date(2026, 0, 1, 14))).toBe('Good afternoon');
     expect(greetingFor(new Date(2026, 0, 1, 20))).toBe('Good evening');
+    expect(greetingFor(new Date(2026, 0, 1, 23))).toBe('Good night');
+    expect(greetingFor(new Date(2026, 0, 1, 1, 30))).toBe('Good night');
+    expect(greetingFor(new Date(2026, 0, 1, 5))).toBe('Good morning');
+  });
+
+  it('knows when it is dark out', () => {
+    expect(isDarkOut(new Date(2026, 0, 1, 12))).toBe(false);
+    expect(isDarkOut(new Date(2026, 0, 1, 19))).toBe(true);
+    expect(isDarkOut(new Date(2026, 0, 1, 3))).toBe(true);
   });
 
   it('adds running time to accumulated focus time', () => {
