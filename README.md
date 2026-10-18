@@ -33,14 +33,21 @@ owned by the user who saved it. A new account starts with none, and `/today` onl
 the logged-in user's own entries. Focus and the message of the day are still in-memory placeholders.
 
 Forgot password: `/auth/forgot-password` emails a 6-digit code (valid 15 minutes, 5 tries, one new code
-per minute) and `/auth/reset-password` trades it plus a new password for a session. No email provider
-is wired up yet, so in dev **the code is printed in the `pnpm dev:api` terminal**; plug one into
-`apps/api/src/mailer.ts` before production (it refuses to run there until you do).
+per minute) and `/auth/reset-password` trades it plus a new password for a session. Codes are sent with
+Resend when `RESEND_API_KEY` is set; without it, dev prints them in the `pnpm dev:api` terminal and
+production refuses to start a reset.
+
+Ledger: the Ledger screen (the "Ledger" button on Today) shows a plan for the rest of the day and a recap
+of what's happened. It's written by hand-made rules, no AI (`packages/shared/src/rules/ledger.ts`): tips for
+upcoming habits, a note per logged memory/feeling/thought, and a nudge for each habit whose time passed.
+
+Put API secrets in `apps/api/.env` (git-ignored; see `.env.example`). `pnpm dev:api` loads it.
 
 | Env var (API) | Purpose |
 | --- | --- |
 | `JWT_SECRET` | Signing key for tokens. **Required when `NODE_ENV=production`**; in dev a random one is used, so restarting the API logs everyone out. |
 | `DATABASE_PATH` | SQLite file location (default `./data/habitlonia.db`, or `:memory:`). |
+| `RESEND_API_KEY`, `MAIL_FROM` | Sending password reset emails. |
 
 Requires Node 22.13+ (uses the built-in `node:sqlite`).
 

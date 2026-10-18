@@ -64,7 +64,11 @@ export default function TodayScreen() {
 
           {today.data && (
             <>
-              <GreetingRow now={now} name={name} />
+              <GreetingRow
+                now={now}
+                name={name}
+                onLedger={() => router.push({ pathname: '/ledger', params: { date: toDateKey(selectedDay) } })}
+              />
               <Timeline entries={entries} />
             </>
           )}
