@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 type FieldProps = Pick<
   TextInputProps,
-  'value' | 'onChangeText' | 'placeholder' | 'autoComplete' | 'keyboardType' | 'secureTextEntry' | 'autoCapitalize' | 'returnKeyType' | 'onSubmitEditing'
+  'value' | 'onChangeText' | 'placeholder' | 'autoComplete' | 'keyboardType' | 'secureTextEntry' | 'autoCapitalize' | 'returnKeyType' | 'onSubmitEditing' | 'maxLength'
 > & { label: string };
 
 export function Field({ label, ...input }: FieldProps) {
@@ -25,6 +25,8 @@ export function Field({ label, ...input }: FieldProps) {
 
 type Props = {
   title: string;
+  /** A line of explanation under the title. */
+  subtitle?: string;
   error: string | null;
   submitLabel: string;
   submitting: boolean;
@@ -35,7 +37,7 @@ type Props = {
   footer: ReactNode;
 };
 
-export function AuthForm({ title, error, submitLabel, submitting, onSubmit, children, footer }: Props) {
+export function AuthForm({ title, subtitle, error, submitLabel, submitting, onSubmit, children, footer }: Props) {
   return (
     <SafeAreaView className="flex-1 bg-surface-sunken">
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -47,6 +49,7 @@ export function AuthForm({ title, error, submitLabel, submitting, onSubmit, chil
             <View className="items-center">
               <Text className="font-hand text-5xl text-ink">{title}</Text>
               <View className="-mt-1 h-0.5 w-24 rounded-full bg-brand" />
+              {subtitle && <Text className="mt-3 text-center text-ink-muted">{subtitle}</Text>}
             </View>
 
             <View className="gap-4">{children}</View>

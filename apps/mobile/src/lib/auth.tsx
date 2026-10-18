@@ -1,4 +1,4 @@
-import { ApiError, type LoginInput, type RegisterInput, type User } from '@habitlonia/shared';
+import { ApiError, type LoginInput, type RegisterInput, type ResetPasswordInput, type User } from '@habitlonia/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { apiClient, setUnauthorizedHandler } from './api';
@@ -13,6 +13,8 @@ type AuthContextValue = {
   state: AuthState;
   signIn: (input: LoginInput) => Promise<void>;
   signUp: (input: RegisterInput) => Promise<void>;
+  /** Sets a new password with the emailed code and logs in. */
+  resetPassword: (input: ResetPasswordInput) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -63,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       state,
       signIn: async (input) => startSession(await apiClient.login(input)),
       signUp: async (input) => startSession(await apiClient.register(input)),
+      resetPassword: async (input) => startSession(await apiClient.resetPassword(input)),
       signOut,
     };
   }, [state, signOut]);

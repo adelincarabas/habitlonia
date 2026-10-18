@@ -61,6 +61,9 @@ export default function LoginScreen() {
         returnKeyType="go"
         onSubmitEditing={submit}
       />
+      <Link href={{ pathname: '/forgot-password', params: { email } }} className="-mt-2 self-end px-1 text-sm text-brand">
+        Forgot password?
+      </Link>
     </AuthForm>
   );
 }

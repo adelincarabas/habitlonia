@@ -24,10 +24,13 @@ function RootStack() {
       <Stack.Protected guard={!signedIn}>
         <Stack.Screen name="login" />
         <Stack.Screen name="register" />
+        <Stack.Screen name="forgot-password" />
+        <Stack.Screen name="reset-password" />
       </Stack.Protected>
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="index" />
         <Stack.Screen name="add" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="profile" options={{ presentation: 'modal' }} />
       </Stack.Protected>
     </Stack>
   );

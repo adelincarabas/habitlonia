@@ -1,9 +1,19 @@
 import { randomBytes } from 'node:crypto';
 import { Hono, type MiddlewareHandler } from 'hono';
 import { sign, verify } from 'hono/jwt';
-import { LoginInput, RegisterInput, type AuthResponse, type User } from '@habitlonia/shared';
+import {
+  ForgotPasswordInput,
+  LoginInput,
+  RegisterInput,
+  ResetPasswordInput,
+  type AuthResponse,
+  type ForgotPasswordResponse,
+  type User,
+} from '@habitlonia/shared';
+import { sendPasswordResetCode } from './mailer';
 import { DUMMY_HASH, hashPassword, verifyPassword } from './password';
-import { createUser, EmailTakenError, findUserById, findUserWithHash } from './users';
+import { consumeResetCode, createResetCode } from './password-resets';
+import { createUser, EmailTakenError, findUserById, findUserWithHash, updatePasswordHash } from './users';
 
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
 
@@ -78,6 +88,46 @@ authRoutes.post('/login', async (c) => {
   const ok = await verifyPassword(password, found?.passwordHash ?? DUMMY_HASH);
   if (!found || !ok) return c.json({ error: 'Wrong email or password' }, 401);
 
+  const response: AuthResponse = { token: await issueToken(found.user), user: found.user };
+  return c.json(response);
+});
+
+// POST /auth/forgot-password
+// Emails a 6-digit code. Answers the same way whether or not the email has an account.
+authRoutes.post('/forgot-password', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const result = ForgotPasswordInput.safeParse(body);
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0]?.message ?? 'invalid input' }, 400);
+  }
+
+  const found = findUserWithHash(result.data.email);
+  const code = found ? createResetCode(found.user.id) : null;
+  if (found && code) {
+    // Not awaited: waiting on the mail provider would make known emails measurably slower to answer.
+    sendPasswordResetCode(found.user, code).catch((err) => console.error('Failed to send reset code', err));
+  }
+
+  const response: ForgotPasswordResponse = { ok: true };
+  return c.json(response);
+});
+
+// POST /auth/reset-password
+// Sets a new password with the emailed code, then logs the user in.
+authRoutes.post('/reset-password', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const result = ResetPasswordInput.safeParse(body);
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0]?.message ?? 'invalid input' }, 400);
+  }
+
+  const { email, code, password } = result.data;
+  const found = findUserWithHash(email);
+  if (!found || !consumeResetCode(found.user.id, code)) {
+    return c.json({ error: 'That code is wrong or has expired' }, 400);
+  }
+
+  updatePasswordHash(found.user.id, await hashPassword(password));
   const response: AuthResponse = { token: await issueToken(found.user), user: found.user };
   return c.json(response);
 });

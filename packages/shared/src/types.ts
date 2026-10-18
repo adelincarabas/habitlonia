@@ -81,6 +81,18 @@ export const LoginInput = z.object({
 });
 export type LoginInput = z.infer<typeof LoginInput>;
 
+export const ForgotPasswordInput = LoginInput.pick({ email: true });
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordInput>;
+
+export const ResetPasswordInput = RegisterInput.pick({ email: true, password: true }).extend({
+  code: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code from the email'),
+});
+export type ResetPasswordInput = z.infer<typeof ResetPasswordInput>;
+
+/** Same answer whether or not the email has an account, so the endpoint can't be used to probe for users. */
+export const ForgotPasswordResponse = z.object({ ok: z.literal(true) });
+export type ForgotPasswordResponse = z.infer<typeof ForgotPasswordResponse>;
+
 export const AuthResponse = z.object({
   token: z.string(),
   user: User,

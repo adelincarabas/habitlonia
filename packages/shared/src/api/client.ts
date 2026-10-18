@@ -4,8 +4,11 @@ import {
   CreateEntryInput,
   Entry,
   FocusSession,
+  ForgotPasswordInput,
+  ForgotPasswordResponse,
   LoginInput,
   RegisterInput,
+  ResetPasswordInput,
   TodayResponse,
   User,
 } from '../types';
@@ -57,6 +60,16 @@ export function createApiClient(baseUrl: string, options: ApiClientOptions = {})
       request(AuthResponse, '/auth/register', { method: 'POST', body: JSON.stringify(RegisterInput.parse(input)) }),
     login: (input: LoginInput) =>
       request(AuthResponse, '/auth/login', { method: 'POST', body: JSON.stringify(LoginInput.parse(input)) }),
+    forgotPassword: (input: ForgotPasswordInput) =>
+      request(ForgotPasswordResponse, '/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify(ForgotPasswordInput.parse(input)),
+      }),
+    resetPassword: (input: ResetPasswordInput) =>
+      request(AuthResponse, '/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify(ResetPasswordInput.parse(input)),
+      }),
     getMe: () => request(User, '/auth/me'),
     getToday: (date: string) => request(TodayResponse, `/today?date=${encodeURIComponent(date)}`),
     createEntry: (input: CreateEntryInput) =>
