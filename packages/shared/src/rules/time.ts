@@ -68,6 +68,7 @@ export function weekOf(date: Date): Date[] {
 }
 
 export const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
+export const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
 export function greetingFor(date: Date): string {
   const h = date.getHours();
@@ -93,7 +94,7 @@ export function formatClock(iso: string): string {
   return `${h}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-/** "10:00–2:00", for actions on the timeline. */
+/** "10:00–2:00", for habits on the timeline. */
 export function formatClockRange(startIso: string, endIso: string): string {
   return `${formatClock(startIso)}–${formatClock(endIso)}`;
 }

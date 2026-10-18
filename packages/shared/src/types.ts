@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** What an entry is. The Today screen's tabs filter by these. */
-export const EntryKind = z.enum(['memory', 'feeling', 'action', 'thought']);
+export const EntryKind = z.enum(['memory', 'feeling', 'habit', 'thought']);
 export type EntryKind = z.infer<typeof EntryKind>;
 
 export const Entry = z.object({
@@ -10,30 +10,69 @@ export const Entry = z.object({
   title: z.string().min(1),
   /** Short mood/descriptor shown under the title, e.g. "thankful". */
   tag: z.string().optional(),
-  /** ISO timestamp of when it happened; the start time for actions. */
+  /** ISO timestamp of when it happened; the start time for habits. */
   createdAt: z.string(),
-  /** ISO timestamp an action ended. Only actions have one. */
+  /** ISO timestamp a habit ended. Only habits have one. */
   endsAt: z.string().optional(),
   /** Hex color used for the timeline dot and the day ring. */
   color: z.string(),
+  /** Set when this entry is one day's occurrence of a repeating habit. */
+  habitId: z.string().optional(),
 });
 export type Entry = z.infer<typeof Entry>;
 
-/** Memories, feelings and thoughts happen at one moment; actions span a start-to-end range. */
+/** Memories, feelings and thoughts happen at one moment; habits span a start-to-end range. */
 export const CreateEntryInput = Entry.pick({ kind: true, title: true, tag: true, color: true })
   .extend({ createdAt: z.iso.datetime(), endsAt: z.iso.datetime().optional() })
   .superRefine((input, ctx) => {
-    if (input.kind !== 'action') {
-      if (input.endsAt) ctx.addIssue({ code: 'custom', path: ['endsAt'], message: 'Only actions have an end time' });
+    if (input.kind !== 'habit') {
+      if (input.endsAt) ctx.addIssue({ code: 'custom', path: ['endsAt'], message: 'Only habits have an end time' });
       return;
     }
     if (!input.endsAt) {
-      ctx.addIssue({ code: 'custom', path: ['endsAt'], message: 'Actions need an end time' });
+      ctx.addIssue({ code: 'custom', path: ['endsAt'], message: 'Habits need an end time' });
     } else if (Date.parse(input.endsAt) <= Date.parse(input.createdAt)) {
-      ctx.addIssue({ code: 'custom', path: ['endsAt'], message: 'An action must end after it starts' });
+      ctx.addIssue({ code: 'custom', path: ['endsAt'], message: 'A habit must end after it starts' });
     }
   });
 export type CreateEntryInput = z.infer<typeof CreateEntryInput>;
+
+/** 0 = Sunday … 6 = Saturday, as in `Date.getDay()`. */
+export const Weekday = z.number().int().min(0).max(6);
+
+/** How often a habit comes back. Weekly repeats can skip every other week and pick several days. */
+export const HabitRepeat = z.discriminatedUnion('every', [
+  z.object({ every: z.literal('day') }),
+  z.object({
+    every: z.literal('week'),
+    interval: z.union([z.literal(1), z.literal(2)]),
+    weekdays: z.array(Weekday).min(1, 'Pick at least one day'),
+  }),
+]);
+export type HabitRepeat = z.infer<typeof HabitRepeat>;
+
+const ClockMinutes = z.number().int().min(0).max(24 * 60 - 1);
+
+/** A repeating habit. Each day it lands on shows up as an entry with `habitId` set. */
+export const Habit = z.object({
+  id: z.string(),
+  title: z.string().min(1),
+  tag: z.string().optional(),
+  color: z.string(),
+  /** YYYY-MM-DD of the first day it can happen; biweekly repeats count weeks from here. */
+  startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  /** Local clock times as minutes since midnight. An end before the start runs past midnight. */
+  startMinutes: ClockMinutes,
+  endMinutes: ClockMinutes,
+  repeat: HabitRepeat,
+});
+export type Habit = z.infer<typeof Habit>;
+
+export const CreateHabitInput = Habit.omit({ id: true }).refine((h) => h.startMinutes !== h.endMinutes, {
+  path: ['endMinutes'],
+  message: 'A habit must end after it starts',
+});
+export type CreateHabitInput = z.infer<typeof CreateHabitInput>;
 
 export const FocusSession = z.object({
   id: z.string(),

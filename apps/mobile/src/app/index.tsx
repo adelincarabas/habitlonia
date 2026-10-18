@@ -16,7 +16,7 @@ import { useAuth } from '@/lib/auth';
 
 export default function TodayScreen() {
   const [selectedDay, setSelectedDay] = useState(() => new Date());
-  const [tab, setTab] = useState<TodayTabKey>('memories');
+  const [tab, setTab] = useState<TodayTabKey>('habits');
 
   const today = useToday(selectedDay);
   const entries = useTodayEntries(today.data, tab);

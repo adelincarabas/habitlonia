@@ -1,8 +1,10 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { entryKindLabel, formatClock, formatClockRange, type Entry } from '@habitlonia/shared';
 import { Text, View } from 'react-native';
+import { useThemeColors } from '@/lib/theme';
 
 function EntryRow({ entry }: { entry: Entry }) {
+  const colors = useThemeColors();
   return (
     <View className="flex-row items-center gap-3 py-3">
       <View className="h-11 w-11 items-center justify-center rounded-full bg-brand">
@@ -16,6 +18,7 @@ function EntryRow({ entry }: { entry: Entry }) {
           {[entryKindLabel(entry.kind), entry.tag].filter(Boolean).join(' · ')}
         </Text>
       </View>
+      {entry.habitId && <MaterialCommunityIcons name="repeat" size={14} color={colors.brand} />}
       <Text className="text-sm font-medium text-brand">
         {entry.endsAt ? formatClockRange(entry.createdAt, entry.endsAt) : formatClock(entry.createdAt)}
       </Text>
