@@ -1,8 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { MessageOfTheDay } from '@habitlonia/shared';
 import { Pressable, Text, View } from 'react-native';
+import { useThemeColors } from '@/lib/theme';
 
 export function MessageOfTheDayCard({ message, onPress }: { message: MessageOfTheDay; onPress?: () => void }) {
+  const colors = useThemeColors();
+
   return (
     <Pressable
       onPress={onPress}
@@ -17,7 +20,7 @@ export function MessageOfTheDayCard({ message, onPress }: { message: MessageOfTh
           {message.text}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color="#B9B9C0" />
+      <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
     </Pressable>
   );
 }

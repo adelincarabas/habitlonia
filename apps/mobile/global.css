@@ -1,3 +1,27 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Theme tokens as space-separated RGB channels so Tailwind opacity modifiers (shadow-brand/20) work.
+   Keep in sync with src/lib/theme.ts, which mirrors them for props that can't take a className (icon colors). */
+@layer base {
+  :root {
+    --brand: 43 75 219;
+    --brand-soft: 233 237 252;
+    --ink: 27 27 31;
+    --ink-muted: 138 138 147;
+    --ink-faint: 185 185 192;
+    --surface: 255 255 255;
+    --surface-sunken: 246 246 248;
+  }
+
+  .dark:root {
+    --brand: 124 147 245;
+    --brand-soft: 31 39 80;
+    --ink: 242 242 245;
+    --ink-muted: 154 154 165;
+    --ink-faint: 90 90 100;
+    --surface: 28 28 33;
+    --surface-sunken: 15 15 18;
+  }
+}

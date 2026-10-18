@@ -1,5 +1,6 @@
 import { WEEKDAY_INITIALS, toDateKey, type DaySummary } from '@habitlonia/shared';
 import { Pressable, Text, View } from 'react-native';
+import { useThemeColors } from '@/lib/theme';
 
 type Props = {
   days: Date[];
@@ -8,17 +9,16 @@ type Props = {
   onSelect: (day: Date) => void;
 };
 
-const EMPTY_DAY = '#D9DCE8';
-
 export function WeekStrip({ days, summaries, selected, onSelect }: Props) {
   const selectedKey = toDateKey(selected);
+  const { emptyDay } = useThemeColors();
 
   return (
     <View className="flex-row justify-between px-4">
       {days.map((day) => {
         const key = toDateKey(day);
         const colors = summaries.find((s) => s.date === key)?.colors ?? [];
-        const [left = EMPTY_DAY, right = left] = colors;
+        const [left = emptyDay, right = left] = colors;
         const isSelected = key === selectedKey;
 
         return (

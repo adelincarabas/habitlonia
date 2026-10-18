@@ -1,10 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, Text, View } from 'react-native';
+import { useThemeColors } from '@/lib/theme';
 import { IconButton } from './IconButton';
 
 type Props = { greeting: string; name: string; onLedger?: () => void; onHistory?: () => void };
 
 export function GreetingRow({ greeting, name, onLedger, onHistory }: Props) {
+  const colors = useThemeColors();
+
   return (
     <View className="flex-row items-center gap-2 px-4">
       <View className="flex-1">
@@ -20,7 +23,7 @@ export function GreetingRow({ greeting, name, onLedger, onHistory }: Props) {
         className="flex-row items-center gap-1 rounded-full bg-surface px-4 py-2 shadow-sm shadow-black/5 active:opacity-70"
       >
         <Text className="font-semibold text-brand">Ledger</Text>
-        <Ionicons name="chevron-forward" size={16} color="#2B4BDB" />
+        <Ionicons name="chevron-forward" size={16} color={colors.brand} />
       </Pressable>
     </View>
   );
