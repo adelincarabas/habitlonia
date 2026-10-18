@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { CreateEntryInput, Entry, FocusSession, MessageOfTheDay } from '@habitlonia/shared';
+import { ENTRY_COLORS, type CreateEntryInput, type Entry, type FocusSession, type MessageOfTheDay } from '@habitlonia/shared';
 
 // Everything is stored in memory for now. When we add a real database,
 // only this file needs to change.
@@ -11,8 +11,6 @@ function makeDate(daysAgo: number, hour: number, minute: number): string {
   date.setHours(hour, minute, 0, 0);
   return date.toISOString();
 }
-
-const colors = ['#2B4BDB', '#A63D2A', '#8E2E4F', '#E8A23A', '#E86BA0', '#5B4E8C', '#E85A3A'];
 
 const entries: Entry[] = [
   {
@@ -43,14 +41,8 @@ const entries: Entry[] = [
     kind: 'action',
     title: 'stretched for 10 minutes',
     createdAt: makeDate(0, 7, 30),
+    endsAt: makeDate(0, 7, 40),
     color: '#E8A23A',
-  },
-  {
-    id: randomUUID(),
-    kind: 'scene',
-    title: 'fog over the river',
-    createdAt: makeDate(0, 6, 20),
-    color: '#5B4E8C',
   },
 ];
 
@@ -61,14 +53,14 @@ for (let day = 1; day <= 6; day++) {
     kind: 'memory',
     title: `earlier memory from ${day} days ago`,
     createdAt: makeDate(day, 9, 0),
-    color: colors[day % colors.length]!,
+    color: ENTRY_COLORS[day % ENTRY_COLORS.length]!,
   });
   entries.push({
     id: randomUUID(),
     kind: 'memory',
     title: `another memory from ${day} days ago`,
     createdAt: makeDate(day, 10, 0),
-    color: colors[(day + 3) % colors.length]!,
+    color: ENTRY_COLORS[(day + 3) % ENTRY_COLORS.length]!,
   });
 }
 
@@ -95,7 +87,8 @@ export function addEntry(input: CreateEntryInput): Entry {
     title: input.title,
     tag: input.tag,
     color: input.color,
-    createdAt: new Date().toISOString(),
+    createdAt: input.createdAt,
+    endsAt: input.endsAt,
   };
   entries.push(newEntry);
   return newEntry;

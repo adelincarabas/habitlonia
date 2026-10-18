@@ -6,10 +6,24 @@ export const TODAY_TABS = [
   { key: 'memories', label: 'Memories', kinds: ['memory', 'thought'] },
   { key: 'feelings', label: 'Feelings', kinds: ['feeling'] },
   { key: 'actions', label: 'Actions', kinds: ['action'] },
-  { key: 'scenes', label: 'Scenes', kinds: ['scene'] },
 ] as const satisfies readonly { key: string; label: string; kinds: readonly EntryKind[] }[];
 
 export type TodayTabKey = (typeof TODAY_TABS)[number]['key'];
+
+/** Kinds offered on the add screen, one per Today tab (thoughts are filed as memories). */
+export const ENTRY_KIND_OPTIONS = [
+  { key: 'memory', label: 'Memory' },
+  { key: 'feeling', label: 'Feeling' },
+  { key: 'action', label: 'Action' },
+] as const satisfies readonly { key: EntryKind; label: string }[];
+
+/** Colors an entry can be tagged with on the timeline and the day ring. */
+export const ENTRY_COLORS = ['#2B4BDB', '#A63D2A', '#8E2E4F', '#E8A23A', '#E86BA0', '#5B4E8C', '#E85A3A'] as const;
+
+/** The kind a new entry defaults to when added from a Today tab. */
+export function defaultKindForTab(tab: TodayTabKey): EntryKind {
+  return TODAY_TABS.find((t) => t.key === tab)!.kinds[0];
+}
 
 export function entriesForTab(entries: Entry[], tab: TodayTabKey): Entry[] {
   const kinds: readonly EntryKind[] = TODAY_TABS.find((t) => t.key === tab)?.kinds ?? [];

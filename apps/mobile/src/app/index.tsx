@@ -1,5 +1,6 @@
-import { TODAY_TABS, greetingFor, weekOf, type TodayTabKey } from '@habitlonia/shared';
+import { TODAY_TABS, defaultKindForTab, greetingFor, toDateKey, weekOf, type TodayTabKey } from '@habitlonia/shared';
 import { useToday, useTodayEntries, useToggleFocus } from '@habitlonia/shared/hooks';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -64,7 +65,14 @@ export default function TodayScreen() {
             </>
           )}
         </ScrollView>
-        <CaptureBar />
+        <CaptureBar
+          onAdd={() =>
+            router.push({
+              pathname: '/add',
+              params: { date: toDateKey(selectedDay), kind: defaultKindForTab(tab) },
+            })
+          }
+        />
       </View>
     </SafeAreaView>
   );
