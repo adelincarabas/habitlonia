@@ -45,6 +45,33 @@ export const DaySummary = z.object({
 });
 export type DaySummary = z.infer<typeof DaySummary>;
 
+export const User = z.object({
+  id: z.string(),
+  email: z.string(),
+  name: z.string(),
+});
+export type User = z.infer<typeof User>;
+
+export const RegisterInput = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(60),
+  email: z.string().trim().toLowerCase().pipe(z.email('Enter a valid email')),
+  // bcrypt-style limits don't apply (we use scrypt), but cap length so hashing can't be abused.
+  password: z.string().min(8, 'Use at least 8 characters').max(128),
+});
+export type RegisterInput = z.infer<typeof RegisterInput>;
+
+export const LoginInput = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email('Enter a valid email')),
+  password: z.string().min(1, 'Password is required').max(128),
+});
+export type LoginInput = z.infer<typeof LoginInput>;
+
+export const AuthResponse = z.object({
+  token: z.string(),
+  user: User,
+});
+export type AuthResponse = z.infer<typeof AuthResponse>;
+
 export const TodayResponse = z.object({
   messageOfTheDay: MessageOfTheDay.nullable(),
   focus: FocusSession.nullable(),
