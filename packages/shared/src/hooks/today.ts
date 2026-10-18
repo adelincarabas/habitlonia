@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import type { CreateEntryInput, FocusSession, TodayResponse } from '../types';
+import type { CreateEntryInput, CreateHabitInput, FocusSession, TodayResponse } from '../types';
 import { focusElapsedSeconds, formatDuration, toDateKey } from '../rules/time';
 import { entriesForTab, type TodayTabKey } from '../rules/entries';
 import { useApi } from './api-context';
@@ -47,4 +47,13 @@ export function useFocusClock(session: FocusSession | null | undefined): string 
   }, [running]);
 
   return session ? formatDuration(focusElapsedSeconds(session, now)) : '0:00:00';
+}
+
+export function useCreateHabit() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateHabitInput) => api.createHabit(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['today'] }),
+  });
 }

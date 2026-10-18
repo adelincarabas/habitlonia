@@ -5,7 +5,7 @@ import { toDateKey } from './time';
 export const TODAY_TABS = [
   { key: 'memories', label: 'Memories', kinds: ['memory', 'thought'] },
   { key: 'feelings', label: 'Feelings', kinds: ['feeling'] },
-  { key: 'actions', label: 'Actions', kinds: ['action'] },
+  { key: 'habits', label: 'Habits', kinds: ['habit'] },
 ] as const satisfies readonly { key: string; label: string; kinds: readonly EntryKind[] }[];
 
 export type TodayTabKey = (typeof TODAY_TABS)[number]['key'];
@@ -14,7 +14,7 @@ export type TodayTabKey = (typeof TODAY_TABS)[number]['key'];
 export const ENTRY_KIND_OPTIONS = [
   { key: 'memory', label: 'Memory' },
   { key: 'feeling', label: 'Feeling' },
-  { key: 'action', label: 'Action' },
+  { key: 'habit', label: 'Habit' },
 ] as const satisfies readonly { key: EntryKind; label: string }[];
 
 /** Colors an entry can be tagged with on the timeline and the day ring. */

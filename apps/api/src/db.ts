@@ -20,7 +20,21 @@ export const db: DatabaseSyncType = new DatabaseSync(path);
 db.exec(`
   PRAGMA journal_mode = WAL;
   PRAGMA foreign_keys = ON;
+`);
 
+// Actions were renamed to habits. SQLite can't change a CHECK constraint in place, so a database
+// created before the rename gets its entries table rebuilt once, with old actions carried over as habits.
+const entriesTable = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'entries'").get() as
+  | { sql: string }
+  | undefined;
+const migrateActions = entriesTable?.sql.includes("'action'") ?? false;
+
+db.exec('BEGIN');
+if (migrateActions) {
+  db.exec('ALTER TABLE entries RENAME TO entries_before_habits; DROP INDEX entries_user_created;');
+}
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id            TEXT PRIMARY KEY,
     email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -29,12 +43,12 @@ db.exec(`
     created_at    TEXT NOT NULL
   );
 
-  -- Memories, thoughts, feelings and actions. Timestamps are UTC ISO strings
+  -- Memories, thoughts, feelings and one-off habits. Timestamps are UTC ISO strings
   -- (always toISOString() form), so comparing them as text orders them in time.
   CREATE TABLE IF NOT EXISTS entries (
     id         TEXT PRIMARY KEY,
     user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    kind       TEXT NOT NULL CHECK (kind IN ('memory', 'feeling', 'action', 'thought')),
+    kind       TEXT NOT NULL CHECK (kind IN ('memory', 'feeling', 'habit', 'thought')),
     title      TEXT NOT NULL,
     tag        TEXT,
     color      TEXT NOT NULL,
@@ -43,6 +57,22 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS entries_user_created ON entries (user_id, created_at);
+
+  -- Repeating habits. Only the rule is stored; /today expands it onto the days it lands on.
+  CREATE TABLE IF NOT EXISTS habits (
+    id            TEXT PRIMARY KEY,
+    user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title         TEXT NOT NULL,
+    tag           TEXT,
+    color         TEXT NOT NULL,
+    starts_on     TEXT NOT NULL, -- YYYY-MM-DD
+    start_minutes INTEGER NOT NULL,
+    end_minutes   INTEGER NOT NULL,
+    repeat        TEXT NOT NULL, -- HabitRepeat as JSON
+    created_at    TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS habits_user ON habits (user_id);
 
   -- At most one live reset code per user; asking again replaces it.
   CREATE TABLE IF NOT EXISTS password_resets (
@@ -53,3 +83,13 @@ db.exec(`
     expires_at TEXT NOT NULL
   );
 `);
+
+if (migrateActions) {
+  db.exec(`
+    INSERT INTO entries (id, user_id, kind, title, tag, color, created_at, ends_at)
+      SELECT id, user_id, CASE kind WHEN 'action' THEN 'habit' ELSE kind END, title, tag, color, created_at, ends_at
+      FROM entries_before_habits;
+    DROP TABLE entries_before_habits;
+  `);
+}
+db.exec('COMMIT');

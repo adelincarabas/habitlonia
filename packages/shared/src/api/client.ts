@@ -2,8 +2,10 @@ import type { z } from 'zod';
 import {
   AuthResponse,
   CreateEntryInput,
+  CreateHabitInput,
   Entry,
   FocusSession,
+  Habit,
   ForgotPasswordInput,
   ForgotPasswordResponse,
   LoginInput,
@@ -76,6 +78,11 @@ export function createApiClient(baseUrl: string, options: ApiClientOptions = {})
       request(Entry, '/entries', {
         method: 'POST',
         body: JSON.stringify(CreateEntryInput.parse(input)),
+      }),
+    createHabit: (input: CreateHabitInput) =>
+      request(Habit, '/habits', {
+        method: 'POST',
+        body: JSON.stringify(CreateHabitInput.parse(input)),
       }),
     toggleFocus: (id: string) => request(FocusSession, `/focus/${id}/toggle`, { method: 'POST' }),
   };
