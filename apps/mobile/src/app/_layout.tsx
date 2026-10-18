@@ -10,6 +10,27 @@ import { useEffect, useState } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { apiClient } from '@/lib/api';
+import { AuthProvider, useAuth } from '@/lib/auth';
+
+function RootStack() {
+  const { state } = useAuth();
+  const signedIn = state.status === 'signedIn';
+
+  // Wait for the saved session to be checked so a logged-in user doesn't flash the login screen.
+  if (state.status === 'loading') return null;
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={!signedIn}>
+        <Stack.Screen name="login" />
+        <Stack.Screen name="register" />
+      </Stack.Protected>
+      <Stack.Protected guard={signedIn}>
+        <Stack.Screen name="index" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
@@ -27,8 +48,10 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <ApiProvider client={apiClient}>
-          <StatusBar style="auto" />
-          <Stack screenOptions={{ headerShown: false }} />
+          <AuthProvider>
+            <StatusBar style="dark" />
+            <RootStack />
+          </AuthProvider>
         </ApiProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

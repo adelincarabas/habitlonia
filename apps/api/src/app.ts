@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { CreateEntryInput, summarizeDay, toDateKey, weekOf, type TodayResponse } from '@habitlonia/shared';
+import { authRoutes, requireAuth } from './auth';
 import {
   addEntry,
   getAllEntries,
@@ -16,6 +17,13 @@ app.use('*', cors());
 app.get('/health', (c) => {
   return c.json({ ok: true });
 });
+
+app.route('/auth', authRoutes);
+
+// Everything below needs a logged-in user.
+app.use('/today', requireAuth);
+app.use('/entries', requireAuth);
+app.use('/focus/*', requireAuth);
 
 // GET /today?date=2026-10-18
 // Returns everything the Today screen needs. If no date is given, uses today.

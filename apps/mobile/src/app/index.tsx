@@ -1,7 +1,7 @@
 import { TODAY_TABS, greetingFor, weekOf, type TodayTabKey } from '@habitlonia/shared';
 import { useToday, useTodayEntries, useToggleFocus } from '@habitlonia/shared/hooks';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CaptureBar } from '@/components/CaptureBar';
 import { FocusCard } from '@/components/FocusCard';
@@ -11,6 +11,7 @@ import { MessageOfTheDayCard } from '@/components/MessageOfTheDayCard';
 import { SegmentedTabs } from '@/components/SegmentedTabs';
 import { Timeline } from '@/components/Timeline';
 import { WeekStrip } from '@/components/WeekStrip';
+import { useAuth } from '@/lib/auth';
 
 export default function TodayScreen() {
   const [selectedDay, setSelectedDay] = useState(() => new Date());
@@ -19,6 +20,8 @@ export default function TodayScreen() {
   const today = useToday(selectedDay);
   const entries = useTodayEntries(today.data, tab);
   const toggleFocus = useToggleFocus();
+  const { state, signOut } = useAuth();
+  const name = state.status === 'signedIn' ? state.user.name : '';
 
   return (
     <SafeAreaView className="flex-1 bg-surface-sunken" edges={['top']}>
@@ -59,8 +62,11 @@ export default function TodayScreen() {
 
           {today.data && (
             <>
-              <GreetingRow greeting={greetingFor(new Date())} name="Billy" />
+              <GreetingRow greeting={greetingFor(new Date())} name={name} />
               <Timeline entries={entries} />
+              <Pressable accessibilityRole="button" onPress={() => void signOut()} className="items-center py-2 active:opacity-70">
+                <Text className="text-sm text-ink-muted">Log out</Text>
+              </Pressable>
             </>
           )}
         </ScrollView>
