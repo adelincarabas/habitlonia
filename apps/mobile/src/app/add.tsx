@@ -16,6 +16,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { DictationButton } from '@/components/DictationButton';
 import { IconButton } from '@/components/IconButton';
 import { SegmentedTabs } from '@/components/SegmentedTabs';
 import { TimeField } from '@/components/TimeField';
@@ -98,14 +99,17 @@ export default function AddEntryScreen() {
 
           <View className="gap-1.5">
             <Text className="text-xs font-medium text-ink-muted">What happened?</Text>
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder={isAction ? 'went for a run' : 'the walk home after the hike'}
-              placeholderTextColor={colors.inkFaint}
-              autoFocus
-              className="rounded-2xl bg-surface px-4 py-3 text-base text-ink"
-            />
+            <View className="flex-row items-center rounded-2xl bg-surface pr-1">
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder={isAction ? 'went for a run' : 'the walk home after the hike'}
+                placeholderTextColor={colors.inkFaint}
+                autoFocus
+                className="flex-1 px-4 py-3 text-base text-ink"
+              />
+              <DictationButton value={title} onChange={setTitle} />
+            </View>
           </View>
 
           <View className="gap-1.5">
