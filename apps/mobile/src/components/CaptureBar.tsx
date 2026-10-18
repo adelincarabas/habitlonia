@@ -2,10 +2,10 @@ import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from './IconButton';
 
-type Props = { onVoice?: () => void; onVideo?: () => void; onExpand?: () => void };
+type Props = { onVoice?: () => void; onVideo?: () => void; onAdd?: () => void };
 
 /** Floating capture controls pinned to the bottom of the Today screen. */
-export function CaptureBar({ onVoice, onVideo, onExpand }: Props) {
+export function CaptureBar({ onVoice, onVideo, onAdd }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -16,7 +16,7 @@ export function CaptureBar({ onVoice, onVideo, onExpand }: Props) {
     >
       <IconButton icon="mic" label="Record voice" size="md" variant="raised" onPress={onVoice} />
       <IconButton icon="videocam" label="Record video" size="lg" variant="brand" onPress={onVideo} />
-      <IconButton icon="chevron-up" label="Expand" size="md" variant="raised" onPress={onExpand} />
+      <IconButton icon="add" label="Add entry" size="md" variant="raised" onPress={onAdd} />
     </View>
   );
 }

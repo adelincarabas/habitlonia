@@ -1,6 +1,13 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { CreateEntryInput, summarizeDay, toDateKey, weekOf, type TodayResponse } from '@habitlonia/shared';
+import {
+  CreateEntryInput,
+  fromDateKey,
+  summarizeDay,
+  toDateKey,
+  weekOf,
+  type TodayResponse,
+} from '@habitlonia/shared';
 import { authRoutes, requireAuth } from './auth';
 import {
   addEntry,
@@ -34,13 +41,11 @@ app.get('/today', (c) => {
     dateKey = toDateKey(new Date());
   }
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+  const date = fromDateKey(dateKey);
+
+  if (!date) {
     return c.json({ error: 'date must look like YYYY-MM-DD' }, 400);
   }
-
-  // "2026-10-18" -> Date
-  const [year, month, day] = dateKey.split('-').map(Number);
-  const date = new Date(year!, month! - 1, day!);
 
   const allEntries = getAllEntries();
   const entriesForDay = allEntries.filter((entry) => toDateKey(new Date(entry.createdAt)) === dateKey);

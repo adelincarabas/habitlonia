@@ -1,5 +1,5 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { entryKindLabel, formatClock, type Entry } from '@habitlonia/shared';
+import { entryKindLabel, formatClock, formatClockRange, type Entry } from '@habitlonia/shared';
 import { Text, View } from 'react-native';
 
 function EntryRow({ entry }: { entry: Entry }) {
@@ -16,7 +16,9 @@ function EntryRow({ entry }: { entry: Entry }) {
           {[entryKindLabel(entry.kind), entry.tag].filter(Boolean).join(' · ')}
         </Text>
       </View>
-      <Text className="text-sm font-medium text-brand">{formatClock(entry.createdAt)}</Text>
+      <Text className="text-sm font-medium text-brand">
+        {entry.endsAt ? formatClockRange(entry.createdAt, entry.endsAt) : formatClock(entry.createdAt)}
+      </Text>
       <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
     </View>
   );

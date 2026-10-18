@@ -27,6 +27,7 @@ function RootStack() {
       </Stack.Protected>
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="add" options={{ presentation: 'modal' }} />
       </Stack.Protected>
     </Stack>
   );
@@ -49,7 +50,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <ApiProvider client={apiClient}>
           <AuthProvider>
-            <StatusBar style="dark" />
+            <StatusBar style="auto" />
             <RootStack />
           </AuthProvider>
         </ApiProvider>
