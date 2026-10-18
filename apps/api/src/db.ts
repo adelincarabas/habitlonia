@@ -29,6 +29,16 @@ const entriesTable = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'tab
   | undefined;
 const migrateActions = entriesTable?.sql.includes("'action'") ?? false;
 
+// A database from before the rename may already have descriptions and photos; carry both over.
+const oldHasDescription =
+  migrateActions &&
+  (db.prepare('PRAGMA table_info(entries)').all() as { name: string }[]).some((column) => column.name === 'description');
+
+if (migrateActions) {
+  // While the table is swapped, keep entry_photos pointing at "entries" (the rebuilt table) instead of
+  // following the rename, and keep the old table's drop from cascading to the photos.
+  db.exec('PRAGMA foreign_keys = OFF; PRAGMA legacy_alter_table = ON;');
+}
 db.exec('BEGIN');
 if (migrateActions) {
   db.exec('ALTER TABLE entries RENAME TO entries_before_habits; DROP INDEX entries_user_created;');
@@ -50,6 +60,7 @@ db.exec(`
     user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     kind       TEXT NOT NULL CHECK (kind IN ('memory', 'feeling', 'habit', 'thought')),
     title      TEXT NOT NULL,
+    description TEXT,
     tag        TEXT,
     color      TEXT NOT NULL,
     created_at TEXT NOT NULL,
@@ -73,6 +84,17 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS habits_user ON habits (user_id);
+  -- Photos attached on an entry's detail screen. Kept in the database so they go
+  -- wherever it goes (and are deleted with their entry).
+  CREATE TABLE IF NOT EXISTS entry_photos (
+    id         TEXT PRIMARY KEY,
+    entry_id   TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    mime_type  TEXT NOT NULL,
+    data       BLOB NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS entry_photos_entry ON entry_photos (entry_id, created_at);
 
   -- At most one live reset code per user; asking again replaces it.
   CREATE TABLE IF NOT EXISTS password_resets (
@@ -86,10 +108,17 @@ db.exec(`
 
 if (migrateActions) {
   db.exec(`
-    INSERT INTO entries (id, user_id, kind, title, tag, color, created_at, ends_at)
-      SELECT id, user_id, CASE kind WHEN 'action' THEN 'habit' ELSE kind END, title, tag, color, created_at, ends_at
+    INSERT INTO entries (id, user_id, kind, title, description, tag, color, created_at, ends_at)
+      SELECT id, user_id, CASE kind WHEN 'action' THEN 'habit' ELSE kind END, title, ${oldHasDescription ? 'description' : 'NULL'}, tag, color, created_at, ends_at
       FROM entries_before_habits;
     DROP TABLE entries_before_habits;
   `);
 }
 db.exec('COMMIT');
+db.exec('PRAGMA foreign_keys = ON; PRAGMA legacy_alter_table = OFF;');
+
+// Databases created before entries had a description.
+const entryColumns = db.prepare('PRAGMA table_info(entries)').all() as { name: string }[];
+if (!entryColumns.some((column) => column.name === 'description')) {
+  db.exec('ALTER TABLE entries ADD COLUMN description TEXT');
+}

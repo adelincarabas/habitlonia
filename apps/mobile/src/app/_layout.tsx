@@ -30,6 +30,7 @@ function RootStack() {
         <Stack.Screen name="index" />
         <Stack.Screen name="add" options={{ presentation: 'modal' }} />
         <Stack.Screen name="profile" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="entry/[id]" />
       </Stack.Protected>
     </Stack>
   );
