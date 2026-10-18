@@ -28,6 +28,11 @@ The API has register/login (`/auth/register`, `/auth/login`, `/auth/me`) backed 
 only a salted scrypt hash. A login returns a signed JWT (30 days) that the app keeps in the device
 keychain and sends as `Authorization: Bearer ...`. `/today`, `/entries` and `/focus/*` require it.
 
+Forgot password: `/auth/forgot-password` emails a 6-digit code (valid 15 minutes, 5 tries, one new code
+per minute) and `/auth/reset-password` trades it plus a new password for a session. No email provider
+is wired up yet, so in dev **the code is printed in the `pnpm dev:api` terminal**; plug one into
+`apps/api/src/mailer.ts` before production (it refuses to run there until you do).
+
 | Env var (API) | Purpose |
 | --- | --- |
 | `JWT_SECRET` | Signing key for tokens. **Required when `NODE_ENV=production`**; in dev a random one is used, so restarting the API logs everyone out. |

@@ -2,7 +2,7 @@ import { TODAY_TABS, defaultKindForTab, greetingFor, toDateKey, weekOf, type Tod
 import { useToday, useTodayEntries, useToggleFocus } from '@habitlonia/shared/hooks';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CaptureBar } from '@/components/CaptureBar';
 import { FocusCard } from '@/components/FocusCard';
@@ -21,7 +21,7 @@ export default function TodayScreen() {
   const today = useToday(selectedDay);
   const entries = useTodayEntries(today.data, tab);
   const toggleFocus = useToggleFocus();
-  const { state, signOut } = useAuth();
+  const { state } = useAuth();
   const name = state.status === 'signedIn' ? state.user.name : '';
 
   return (
@@ -34,7 +34,7 @@ export default function TodayScreen() {
               <Text className="font-hand text-4xl text-ink">Today</Text>
               <View className="-mt-1 h-0.5 w-24 rounded-full bg-brand" />
             </View>
-            <IconButton icon="people" label="Friends" variant="raised" />
+            <IconButton icon="person" label="Profile" variant="raised" onPress={() => router.push('/profile')} />
           </View>
 
           <WeekStrip
@@ -65,9 +65,6 @@ export default function TodayScreen() {
             <>
               <GreetingRow greeting={greetingFor(new Date())} name={name} />
               <Timeline entries={entries} />
-              <Pressable accessibilityRole="button" onPress={() => void signOut()} className="items-center py-2 active:opacity-70">
-                <Text className="text-sm text-ink-muted">Log out</Text>
-              </Pressable>
             </>
           )}
         </ScrollView>

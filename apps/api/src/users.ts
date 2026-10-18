@@ -16,6 +16,7 @@ const insertUser = db.prepare(
 );
 const selectByEmail = db.prepare('SELECT id, email, name, password_hash FROM users WHERE email = ?');
 const selectById = db.prepare('SELECT id, email, name, password_hash FROM users WHERE id = ?');
+const updateHash = db.prepare('UPDATE users SET password_hash = ? WHERE id = ?');
 
 export class EmailTakenError extends Error {}
 
@@ -40,4 +41,8 @@ export function findUserWithHash(email: string): { user: User; passwordHash: str
 export function findUserById(id: string): User | null {
   const row = selectById.get(id) as UserRow | undefined;
   return row ? toUser(row) : null;
+}
+
+export function updatePasswordHash(userId: string, passwordHash: string): void {
+  updateHash.run(passwordHash, userId);
 }
