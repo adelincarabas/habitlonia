@@ -28,4 +28,19 @@ db.exec(`
     password_hash TEXT NOT NULL,
     created_at    TEXT NOT NULL
   );
+
+  -- Memories, thoughts, feelings and actions. Timestamps are UTC ISO strings
+  -- (always toISOString() form), so comparing them as text orders them in time.
+  CREATE TABLE IF NOT EXISTS entries (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL CHECK (kind IN ('memory', 'feeling', 'action', 'thought')),
+    title      TEXT NOT NULL,
+    tag        TEXT,
+    color      TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    ends_at    TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS entries_user_created ON entries (user_id, created_at);
 `);

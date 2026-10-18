@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import {
+  addDays,
   CreateEntryInput,
   fromDateKey,
   summarizeDay,
@@ -8,16 +9,11 @@ import {
   weekOf,
   type TodayResponse,
 } from '@habitlonia/shared';
-import { authRoutes, requireAuth } from './auth';
-import {
-  addEntry,
-  getAllEntries,
-  getFocus,
-  getMessageOfTheDay,
-  toggleFocus,
-} from './store';
+import { authRoutes, requireAuth, type AuthEnv } from './auth';
+import { addEntry, getEntriesBetween } from './entries';
+import { getFocus, getMessageOfTheDay, toggleFocus } from './store';
 
-export const app = new Hono();
+export const app = new Hono<AuthEnv>();
 
 app.use('*', cors());
 
@@ -47,9 +43,10 @@ app.get('/today', (c) => {
     return c.json({ error: 'date must look like YYYY-MM-DD' }, 400);
   }
 
-  const allEntries = getAllEntries();
-  const entriesForDay = allEntries.filter((entry) => toDateKey(new Date(entry.createdAt)) === dateKey);
-  const week = weekOf(date).map((weekDay) => summarizeDay(weekDay, allEntries));
+  const days = weekOf(date);
+  const weekEntries = getEntriesBetween(c.get('user').id, days[0]!, addDays(days[6]!, 1));
+  const entriesForDay = weekEntries.filter((entry) => toDateKey(new Date(entry.createdAt)) === dateKey);
+  const week = days.map((weekDay) => summarizeDay(weekDay, weekEntries));
 
   const response: TodayResponse = {
     messageOfTheDay: getMessageOfTheDay(),
@@ -70,7 +67,7 @@ app.post('/entries', async (c) => {
     return c.json({ error: result.error.issues }, 400);
   }
 
-  const entry = addEntry(result.data);
+  const entry = addEntry(c.get('user').id, result.data);
   return c.json(entry, 201);
 });
 

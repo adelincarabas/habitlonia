@@ -28,6 +28,10 @@ The API has register/login (`/auth/register`, `/auth/login`, `/auth/me`) backed 
 only a salted scrypt hash. A login returns a signed JWT (30 days) that the app keeps in the device
 keychain and sends as `Authorization: Bearer ...`. `/today`, `/entries` and `/focus/*` require it.
 
+Entries (memories, thoughts, feelings, actions) live in the same SQLite file, one row per entry,
+owned by the user who saved it. A new account starts with none, and `/today` only ever returns
+the logged-in user's own entries. Focus and the message of the day are still in-memory placeholders.
+
 | Env var (API) | Purpose |
 | --- | --- |
 | `JWT_SECRET` | Signing key for tokens. **Required when `NODE_ENV=production`**; in dev a random one is used, so restarting the API logs everyone out. |

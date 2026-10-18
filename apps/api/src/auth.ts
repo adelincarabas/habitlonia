@@ -23,7 +23,7 @@ async function issueToken(user: User): Promise<string> {
   return sign({ sub: user.id, iat: now, exp: now + TOKEN_TTL_SECONDS }, secret, 'HS256');
 }
 
-type AuthEnv = { Variables: { user: User } };
+export type AuthEnv = { Variables: { user: User } };
 
 /** Rejects the request unless it carries a valid Bearer token for an existing user. */
 export const requireAuth: MiddlewareHandler<AuthEnv> = async (c, next) => {
