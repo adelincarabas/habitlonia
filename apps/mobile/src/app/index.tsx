@@ -64,7 +64,10 @@ export default function TodayScreen() {
           {today.data && (
             <>
               <GreetingRow greeting={greetingFor(new Date())} name={name} />
-              <Timeline entries={entries} />
+              <Timeline
+                entries={entries}
+                onOpen={(entry) => router.push({ pathname: '/entry/[id]', params: { id: entry.id } })}
+              />
             </>
           )}
         </ScrollView>

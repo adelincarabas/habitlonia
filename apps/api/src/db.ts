@@ -36,6 +36,7 @@ db.exec(`
     user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     kind       TEXT NOT NULL CHECK (kind IN ('memory', 'feeling', 'action', 'thought')),
     title      TEXT NOT NULL,
+    description TEXT,
     tag        TEXT,
     color      TEXT NOT NULL,
     created_at TEXT NOT NULL,
@@ -43,6 +44,18 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS entries_user_created ON entries (user_id, created_at);
+
+  -- Photos attached on an entry's detail screen. Kept in the database so they go
+  -- wherever it goes (and are deleted with their entry).
+  CREATE TABLE IF NOT EXISTS entry_photos (
+    id         TEXT PRIMARY KEY,
+    entry_id   TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    mime_type  TEXT NOT NULL,
+    data       BLOB NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS entry_photos_entry ON entry_photos (entry_id, created_at);
 
   -- At most one live reset code per user; asking again replaces it.
   CREATE TABLE IF NOT EXISTS password_resets (
@@ -53,3 +66,9 @@ db.exec(`
     expires_at TEXT NOT NULL
   );
 `);
+
+// Databases created before entries had a description.
+const entryColumns = db.prepare('PRAGMA table_info(entries)').all() as { name: string }[];
+if (!entryColumns.some((column) => column.name === 'description')) {
+  db.exec('ALTER TABLE entries ADD COLUMN description TEXT');
+}

@@ -22,6 +22,13 @@ import { SegmentedTabs } from '@/components/SegmentedTabs';
 import { TimeField } from '@/components/TimeField';
 import { useThemeColors } from '@/lib/theme';
 
+const TITLE_PLACEHOLDERS: Record<EntryKind, string> = {
+  memory: 'the walk home after the hike',
+  thought: 'call her back later',
+  feeling: 'calm after coffee',
+  action: 'went for a run',
+};
+
 const TAG_PLACEHOLDERS: Record<EntryKind, string> = {
   memory: 'thankful',
   thought: 'curious',
@@ -47,6 +54,7 @@ export default function AddEntryScreen() {
   const [day, setDay] = useState(() => fromDateKey(params.date ?? '') ?? new Date());
   const [kind, setKind] = useState<EntryKind>(() => EntryKind.safeParse(params.kind).data ?? 'memory');
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [tag, setTag] = useState('');
   const [color, setColor] = useState<string>(ENTRY_COLORS[0]);
   const [start, setStart] = useState(nowClock);
@@ -65,6 +73,7 @@ export default function AddEntryScreen() {
     const input: CreateEntryInput = {
       kind,
       title: title.trim(),
+      description: description.trim() || undefined,
       tag: tag.trim() || undefined,
       color,
       createdAt: when.start.toISOString(),
@@ -98,17 +107,32 @@ export default function AddEntryScreen() {
           </View>
 
           <View className="gap-1.5">
-            <Text className="text-xs font-medium text-ink-muted">What happened?</Text>
-            <View className="flex-row items-center rounded-2xl bg-surface pr-1">
+            <Text className="text-xs font-medium text-ink-muted">Title</Text>
+            <TextInput
+              accessibilityLabel="Title"
+              value={title}
+              onChangeText={setTitle}
+              placeholder={TITLE_PLACEHOLDERS[kind]}
+              placeholderTextColor={colors.inkFaint}
+              autoFocus
+              className="rounded-2xl bg-surface px-4 py-3 text-base text-ink"
+            />
+          </View>
+
+          <View className="gap-1.5">
+            <Text className="text-xs font-medium text-ink-muted">What happened? (optional)</Text>
+            <View className="flex-row rounded-2xl bg-surface pr-1 pt-1">
               <TextInput
-                value={title}
-                onChangeText={setTitle}
-                placeholder={isAction ? 'went for a run' : 'the walk home after the hike'}
+                accessibilityLabel="What happened?"
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Tell the story, as much or as little as you like"
                 placeholderTextColor={colors.inkFaint}
-                autoFocus
-                className="flex-1 px-4 py-3 text-base text-ink"
+                multiline
+                textAlignVertical="top"
+                className="min-h-24 flex-1 px-4 py-2 text-base leading-6 text-ink"
               />
-              <DictationButton value={title} onChange={setTitle} />
+              <DictationButton value={description} onChange={setDescription} />
             </View>
           </View>
 

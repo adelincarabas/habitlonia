@@ -8,6 +8,8 @@ export const Entry = z.object({
   id: z.string(),
   kind: EntryKind,
   title: z.string().min(1),
+  /** Longer free text, written on the entry's detail screen. */
+  description: z.string().optional(),
   /** Short mood/descriptor shown under the title, e.g. "thankful". */
   tag: z.string().optional(),
   /** ISO timestamp of when it happened; the start time for actions. */
@@ -19,9 +21,16 @@ export const Entry = z.object({
 });
 export type Entry = z.infer<typeof Entry>;
 
+/** The longer "what happened?" text. Trimmed; an empty one means none. */
+const EntryDescription = z.string().trim().max(5000);
+
 /** Memories, feelings and thoughts happen at one moment; actions span a start-to-end range. */
 export const CreateEntryInput = Entry.pick({ kind: true, title: true, tag: true, color: true })
-  .extend({ createdAt: z.iso.datetime(), endsAt: z.iso.datetime().optional() })
+  .extend({
+    description: EntryDescription.optional(),
+    createdAt: z.iso.datetime(),
+    endsAt: z.iso.datetime().optional(),
+  })
   .superRefine((input, ctx) => {
     if (input.kind !== 'action') {
       if (input.endsAt) ctx.addIssue({ code: 'custom', path: ['endsAt'], message: 'Only actions have an end time' });
@@ -34,6 +43,41 @@ export const CreateEntryInput = Entry.pick({ kind: true, title: true, tag: true,
     }
   });
 export type CreateEntryInput = z.infer<typeof CreateEntryInput>;
+
+/** Edits made on the detail screen. An empty description clears it. */
+export const UpdateEntryInput = z.object({
+  title: z.string().trim().min(1, 'Give it a title').max(200).optional(),
+  description: EntryDescription.optional(),
+});
+export type UpdateEntryInput = z.infer<typeof UpdateEntryInput>;
+
+export const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'] as const;
+/** Largest photo the API accepts, after decoding. */
+export const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+export const MAX_PHOTOS_PER_ENTRY = 12;
+
+export const EntryPhoto = z.object({
+  id: z.string(),
+  /** Path on the API, e.g. "/photos/<id>"; the client turns it into a full URL. */
+  path: z.string(),
+  createdAt: z.string(),
+});
+export type EntryPhoto = z.infer<typeof EntryPhoto>;
+
+export const AddPhotoInput = z.object({
+  mimeType: z.enum(PHOTO_MIME_TYPES),
+  /** The image bytes, base64-encoded (no data: prefix). */
+  data: z.base64().min(1),
+});
+export type AddPhotoInput = z.infer<typeof AddPhotoInput>;
+
+/** One entry with everything its detail screen shows. */
+export const EntryDetail = Entry.extend({ photos: z.array(EntryPhoto) });
+export type EntryDetail = z.infer<typeof EntryDetail>;
+
+/** What a DELETE answers. */
+export const OkResponse = z.object({ ok: z.literal(true) });
+export type OkResponse = z.infer<typeof OkResponse>;
 
 export const FocusSession = z.object({
   id: z.string(),

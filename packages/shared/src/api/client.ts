@@ -1,15 +1,20 @@
 import type { z } from 'zod';
 import {
+  AddPhotoInput,
   AuthResponse,
   CreateEntryInput,
   Entry,
+  EntryDetail,
+  EntryPhoto,
   FocusSession,
   ForgotPasswordInput,
   ForgotPasswordResponse,
   LoginInput,
+  OkResponse,
   RegisterInput,
   ResetPasswordInput,
   TodayResponse,
+  UpdateEntryInput,
   User,
 } from '../types';
 
@@ -77,6 +82,23 @@ export function createApiClient(baseUrl: string, options: ApiClientOptions = {})
         method: 'POST',
         body: JSON.stringify(CreateEntryInput.parse(input)),
       }),
+    getEntry: (id: string) => request(EntryDetail, `/entries/${encodeURIComponent(id)}`),
+    updateEntry: (id: string, input: UpdateEntryInput) =>
+      request(Entry, `/entries/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(UpdateEntryInput.parse(input)),
+      }),
+    addEntryPhoto: (entryId: string, input: AddPhotoInput) =>
+      request(EntryPhoto, `/entries/${encodeURIComponent(entryId)}/photos`, {
+        method: 'POST',
+        body: JSON.stringify(AddPhotoInput.parse(input)),
+      }),
+    removeEntryPhoto: (entryId: string, photoId: string) =>
+      request(OkResponse, `/entries/${encodeURIComponent(entryId)}/photos/${encodeURIComponent(photoId)}`, {
+        method: 'DELETE',
+      }),
+    /** Full URL for an <Image> source. */
+    photoUrl: (photo: EntryPhoto) => `${baseUrl}${photo.path}`,
     toggleFocus: (id: string) => request(FocusSession, `/focus/${id}/toggle`, { method: 'POST' }),
   };
 }
