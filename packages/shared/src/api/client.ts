@@ -15,6 +15,7 @@ import {
   ForgotPasswordResponse,
   LoginInput,
   OkResponse,
+  ProgressResponse,
   RegisterInput,
   ResetPasswordInput,
   SonglessMemoryInput,
@@ -100,6 +101,8 @@ export function createApiClient(baseUrl: string, options: ApiClientOptions = {})
     /** Habit check-offs per day from `from` to `to` (YYYY-MM-DD, both included). */
     getHabitHistory: (from: string, to: string) =>
       request(HabitHistoryResponse, `/history?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+    /** Health score, level and milestones for the profile. */
+    getProgress: () => request(ProgressResponse, '/progress'),
     getEntry: (id: string) => request(EntryDetail, `/entries/${encodeURIComponent(id)}`),
     updateEntry: (id: string, input: UpdateEntryInput) =>
       request(Entry, `/entries/${encodeURIComponent(id)}`, {

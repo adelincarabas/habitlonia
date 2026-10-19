@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HabitChart } from '@/components/HabitChart';
 import { IconButton } from '@/components/IconButton';
+import { ProgressCard } from '@/components/ProgressCard';
 import { SegmentedTabs } from '@/components/SegmentedTabs';
 import { useAuth } from '@/lib/auth';
 import { THEME_OPTIONS, useThemePreference } from '@/lib/theme-preference';
@@ -47,6 +48,10 @@ export default function ProfileScreen() {
           </View>
 
           <View className="pt-10">
+            <ProgressCard />
+          </View>
+
+          <View className="pt-8">
             <HabitChart />
           </View>
 

@@ -159,6 +159,60 @@ export type HabitDay = z.infer<typeof HabitDay>;
 export const HabitHistoryResponse = z.object({ days: z.array(HabitDay) });
 export type HabitHistoryResponse = z.infer<typeof HabitHistoryResponse>;
 
+/** Words for a health score, from kindest-sounding to best. None of them reads as failing. */
+export const HabitHealthBand = z.enum(['resting', 'growing', 'steady', 'thriving']);
+export type HabitHealthBand = z.infer<typeof HabitHealthBand>;
+
+/** How habits have gone lately: a recency-weighted done rate, so one bad day fades instead of breaking anything. */
+export const HabitHealth = z.object({
+  /** 0–100. */
+  score: z.number().int().min(0).max(100),
+  band: HabitHealthBand,
+  /** The last two weeks compared with the two before. */
+  trend: z.enum(['up', 'down', 'level']),
+});
+export type HabitHealth = z.infer<typeof HabitHealth>;
+
+/** Levels only ever go up: they count check-offs, never misses. */
+export const HabitLevel = z.object({
+  level: z.number().int().min(1),
+  /** Every habit ever checked off. */
+  totalDone: z.number().int().nonnegative(),
+  /** Check-offs at which this level and the next one start. */
+  levelStartsAt: z.number().int().nonnegative(),
+  nextLevelAt: z.number().int().positive(),
+});
+export type HabitLevel = z.infer<typeof HabitLevel>;
+
+export const MilestoneKey = z.enum([
+  'first-step',
+  'full-day',
+  'good-week',
+  'comeback',
+  'steady-month',
+  'done-25',
+  'done-100',
+  'done-365',
+]);
+export type MilestoneKey = z.infer<typeof MilestoneKey>;
+
+export const Milestone = z.object({
+  key: MilestoneKey,
+  title: z.string(),
+  description: z.string(),
+  /** YYYY-MM-DD it was first reached, or null while it's still ahead. */
+  earnedOn: z.string().nullable(),
+});
+export type Milestone = z.infer<typeof Milestone>;
+
+export const ProgressResponse = z.object({
+  /** Null until there's enough history to say anything. */
+  health: HabitHealth.nullable(),
+  level: HabitLevel,
+  milestones: z.array(Milestone),
+});
+export type ProgressResponse = z.infer<typeof ProgressResponse>;
+
 export const User = z.object({
   id: z.string(),
   email: z.string(),
