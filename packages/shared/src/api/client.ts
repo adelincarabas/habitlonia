@@ -16,7 +16,11 @@ import {
   OkResponse,
   RegisterInput,
   ResetPasswordInput,
+  SonglessMemoryInput,
+  SonglessPlaylist,
   SonglessResponse,
+  SonglessRound,
+  SonglessTryInput,
   type SonglessSong,
   TodayResponse,
   UpdateEntryInput,
@@ -110,15 +114,30 @@ export function createApiClient(baseUrl: string, options: ApiClientOptions = {})
     /** Full URL for an <Image> source. */
     photoUrl: (photo: EntryPhoto) => `${baseUrl}${photo.path}`,
     toggleFocus: (id: string) => request(FocusSession, `/focus/${id}/toggle`, { method: 'POST' }),
-    getSongless: () => request(SonglessResponse, '/songless'),
+    getSongless: (date: string) => request(SonglessResponse, `/songless?date=${encodeURIComponent(date)}`),
+    /** Adds a playlist (or reloads one added before) and starts playing it. */
     importSonglessPlaylist: (input: ImportSonglessPlaylistInput) =>
-      request(SonglessResponse, '/songless/playlist', {
+      request(SonglessPlaylist, '/songless/playlist', {
         method: 'PUT',
         body: JSON.stringify(ImportSonglessPlaylistInput.parse(input)),
       }),
+    selectSonglessPlaylist: (id: string) =>
+      request(OkResponse, `/songless/playlists/${encodeURIComponent(id)}/select`, { method: 'POST' }),
+    removeSonglessPlaylist: (id: string) =>
+      request(OkResponse, `/songless/playlists/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    songlessTry: (playlistId: string, date: string, input: SonglessTryInput) =>
+      request(SonglessRound, `/songless/rounds/${encodeURIComponent(playlistId)}/${encodeURIComponent(date)}/tries`, {
+        method: 'POST',
+        body: JSON.stringify(SonglessTryInput.parse(input)),
+      }),
+    saveSonglessMemory: (playlistId: string, date: string, input: SonglessMemoryInput) =>
+      request(SonglessRound, `/songless/rounds/${encodeURIComponent(playlistId)}/${encodeURIComponent(date)}/memory`, {
+        method: 'POST',
+        body: JSON.stringify(SonglessMemoryInput.parse(input)),
+      }),
     /** Full URL of a song's 30s preview, for the audio player. */
-    songlessPreviewUrl: (song: SonglessSong) =>
-      song.previewUrl.startsWith('/') ? `${baseUrl}${song.previewUrl}` : song.previewUrl,
+    songlessPreviewUrl: ({ previewUrl }: Pick<SonglessSong, 'previewUrl'>) =>
+      previewUrl.startsWith('/') ? `${baseUrl}${previewUrl}` : previewUrl,
     /** The song's album cover, for an <Image> source. */
     songlessArtworkUrl: (song: SonglessSong) => `${baseUrl}/songless/artwork/${encodeURIComponent(song.id)}`,
   };

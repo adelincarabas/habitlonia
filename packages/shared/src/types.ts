@@ -204,6 +204,10 @@ export const SonglessSong = z.object({
 export type SonglessSong = z.infer<typeof SonglessSong>;
 
 export const SonglessPlaylist = z.object({
+  /** Spotify playlist id. */
+  id: z.string(),
+  /** The link it was added with. */
+  link: z.string(),
   name: z.string(),
   songs: z.array(SonglessSong),
   /** Playlist tracks that had no preview anywhere and were left out. */
@@ -211,8 +215,59 @@ export const SonglessPlaylist = z.object({
 });
 export type SonglessPlaylist = z.infer<typeof SonglessPlaylist>;
 
-export const SonglessResponse = z.object({ playlist: SonglessPlaylist.nullable() });
+/** A playlist the user has added before, listed on the Songless screen to switch back to. */
+export const SavedSonglessPlaylist = SonglessPlaylist.pick({ id: true, link: true, name: true }).extend({
+  songCount: z.number().int().nonnegative(),
+  /** Its song of the day has already been played (won or lost). */
+  playedToday: z.boolean(),
+});
+export type SavedSonglessPlaylist = z.infer<typeof SavedSonglessPlaylist>;
+
+/** A try that didn't get the song: a skip, or a wrong pick from the playlist. */
+export const SonglessAttempt = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('skip') }),
+  z.object({ kind: z.literal('wrong'), song: SonglessSong }),
+]);
+export type SonglessAttempt = z.infer<typeof SonglessAttempt>;
+
+export const SonglessRoundStatus = z.enum(['guessing', 'won', 'lost']);
+export type SonglessRoundStatus = z.infer<typeof SonglessRoundStatus>;
+
+/** A playlist's song of the day. Each playlist gets one round per day. */
+export const SonglessRound = z.object({
+  playlistId: z.string(),
+  /** YYYY-MM-DD */
+  date: z.string(),
+  /** The song's 30s preview, same shape as SonglessSong.previewUrl. */
+  previewUrl: z.string(),
+  /** The answer, kept back until the round is over. */
+  song: SonglessSong.nullable(),
+  attempts: z.array(SonglessAttempt),
+  status: SonglessRoundStatus,
+  /** The memory written about the song once the round was over, if any. */
+  memoryId: z.string().nullable(),
+});
+export type SonglessRound = z.infer<typeof SonglessRound>;
+
+export const SonglessResponse = z.object({
+  /** The playlist being played, or null before one is added. */
+  playlist: SonglessPlaylist.nullable(),
+  /** Every playlist the user has added, the one being played first. */
+  playlists: z.array(SavedSonglessPlaylist),
+  /** Today's round for `playlist`. */
+  round: SonglessRound.nullable(),
+});
 export type SonglessResponse = z.infer<typeof SonglessResponse>;
+
+/** One try in a round: a song picked from the playlist, or null to skip to a longer clip. */
+export const SonglessTryInput = z.object({ songId: z.string().min(1).nullable() });
+export type SonglessTryInput = z.infer<typeof SonglessTryInput>;
+
+/** How the song made the user feel, saved as a memory after the round. */
+export const SonglessMemoryInput = z.object({
+  feeling: z.string().trim().min(1, 'Write a few words about it').max(5000),
+});
+export type SonglessMemoryInput = z.infer<typeof SonglessMemoryInput>;
 
 /**
  * The id in a Spotify playlist link, as copied from the app's Share menu:

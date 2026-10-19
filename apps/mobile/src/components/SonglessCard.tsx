@@ -1,33 +1,34 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
-  isCorrectGuess,
-  pickNextSong,
   searchSongs,
   SONGLESS_CLIP_SECONDS,
   type SonglessPlaylist,
+  type SonglessRound,
   type SonglessSong,
 } from '@habitlonia/shared';
-import { useApi } from '@habitlonia/shared/hooks';
+import { useApi, useSaveSonglessMemory, useSonglessTry } from '@habitlonia/shared/hooks';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, TextInput, View } from 'react-native';
+import { SonglessMemoryModal } from '@/components/SonglessMemoryModal';
 import { useThemeColors } from '@/lib/theme';
-
-type Attempt = { kind: 'skip' } | { kind: 'wrong'; song: SonglessSong };
-type Status = 'guessing' | 'won' | 'lost';
 
 const MAX_SECONDS = SONGLESS_CLIP_SECONDS[SONGLESS_CLIP_SECONDS.length - 1];
 const formatSeconds = (s: number) => `${s}s`;
 
-/** Songless on the Today screen: hear a sliver of a song from your playlist and name it. */
-export function SonglessCard({ playlist, onChangePlaylist }: { playlist: SonglessPlaylist; onChangePlaylist: () => void }) {
+type Props = { playlist: SonglessPlaylist; round: SonglessRound; onChangePlaylist: () => void };
+
+/**
+ * Songless on the Today screen: hear a sliver of the playlist's song of the day and name it.
+ * Each playlist gets one song a day; the round lives on the server, so leaving the app doesn't reset it.
+ */
+export function SonglessCard({ playlist, round, onChangePlaylist }: Props) {
   const api = useApi();
   const colors = useThemeColors();
-  const played = useRef(new Set<string>());
-  const [song, setSong] = useState(() => pickNextSong(playlist.songs, played.current));
-  const [attempts, setAttempts] = useState<Attempt[]>([]);
-  const [status, setStatus] = useState<Status>('guessing');
+  const tryMutation = useSonglessTry(playlist.id, round.date);
+  const saveMemory = useSaveSonglessMemory(playlist.id, round.date);
   const [query, setQuery] = useState('');
+  const [memoryOpen, setMemoryOpen] = useState(false);
 
   const player = useAudioPlayer(null, { updateInterval: 50 });
   const audio = useAudioPlayerStatus(player);
@@ -37,24 +38,11 @@ export function SonglessCard({ playlist, onChangePlaylist }: { playlist: Songles
   const stopAt = useRef<number | null>(null);
   const frame = useRef<number | null>(null);
 
-  // A new playlist was picked: start over with a song from it.
-  const [shownPlaylist, setShownPlaylist] = useState(playlist);
-  if (shownPlaylist !== playlist) {
-    setShownPlaylist(playlist);
-    played.current = new Set();
-    setSong(pickNextSong(playlist.songs, played.current));
-    setAttempts([]);
-    setStatus('guessing');
-    setQuery('');
-  }
-
   useEffect(() => {
-    if (!song) return;
-    played.current.add(song.id);
     stopClip();
-    player.replace({ uri: api.songlessPreviewUrl(song) });
+    player.replace({ uri: api.songlessPreviewUrl(round) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [song, player, api]);
+  }, [round.previewUrl, player, api]);
 
   // The player is released on unmount; just make sure nothing keeps polling it.
   useEffect(
@@ -64,6 +52,7 @@ export function SonglessCard({ playlist, onChangePlaylist }: { playlist: Songles
     [],
   );
 
+  const { attempts, status, song } = round;
   const step = Math.min(attempts.length, SONGLESS_CLIP_SECONDS.length - 1);
   const clipSeconds = status === 'guessing' ? SONGLESS_CLIP_SECONDS[step] : MAX_SECONDS;
   const suggestions = useMemo(() => searchSongs(playlist.songs, query), [playlist.songs, query]);
@@ -100,33 +89,22 @@ export function SonglessCard({ playlist, onChangePlaylist }: { playlist: Songles
     frame.current = requestAnimationFrame(watchPlayhead);
   }
 
-  function nextAttempt(attempt: Attempt) {
+  /** A pick from the playlist, or null to skip. Once the round is over, asks how the song felt. */
+  function submitTry(picked: SonglessSong | null) {
+    if (tryMutation.isPending) return;
     stopClip();
-    const next = [...attempts, attempt];
-    setAttempts(next);
-    if (next.length >= SONGLESS_CLIP_SECONDS.length) setStatus('lost');
-  }
-
-  function guess(picked: SonglessSong) {
-    if (!song) return;
     setQuery('');
-    if (isCorrectGuess(song, picked)) {
-      stopClip();
-      setStatus('won');
-    } else {
-      nextAttempt({ kind: 'wrong', song: picked });
-    }
+    tryMutation.mutate(
+      { songId: picked?.id ?? null },
+      { onSuccess: (next) => next.status !== 'guessing' && setMemoryOpen(true) },
+    );
   }
 
-  function nextSong() {
-    stopClip();
-    setAttempts([]);
-    setStatus('guessing');
-    setQuery('');
-    setSong(pickNextSong(playlist.songs, played.current, song?.id));
+  function openMemory() {
+    player.pause();
+    saveMemory.reset();
+    setMemoryOpen(true);
   }
-
-  if (!song) return null;
 
   const nextSeconds = SONGLESS_CLIP_SECONDS[step + 1];
 
@@ -142,7 +120,7 @@ export function SonglessCard({ playlist, onChangePlaylist }: { playlist: Songles
         </Pressable>
       </View>
 
-      {status === 'guessing' ? (
+      {status === 'guessing' || !song ? (
         <View className="flex-row items-center gap-5">
           <Pressable
             accessibilityRole="button"
@@ -207,6 +185,8 @@ export function SonglessCard({ playlist, onChangePlaylist }: { playlist: Songles
         </View>
       )}
 
+      {tryMutation.isError && <Text className="text-sm text-red-500">{tryMutation.error.message}</Text>}
+
       {status === 'guessing' ? (
         <View className="gap-2">
           <View className="flex-row items-center gap-2">
@@ -217,12 +197,14 @@ export function SonglessCard({ playlist, onChangePlaylist }: { playlist: Songles
               placeholderTextColor={colors.inkFaint}
               autoCorrect={false}
               returnKeyType="done"
-              onSubmitEditing={() => suggestions[0] && guess(suggestions[0])}
+              editable={!tryMutation.isPending}
+              onSubmitEditing={() => suggestions[0] && submitTry(suggestions[0])}
               className="flex-1 rounded-2xl bg-surface-sunken px-4 py-3 text-base text-ink"
             />
             <Pressable
               accessibilityRole="button"
-              onPress={() => nextAttempt({ kind: 'skip' })}
+              disabled={tryMutation.isPending}
+              onPress={() => submitTry(null)}
               className="rounded-2xl bg-brand-soft px-4 py-3 active:opacity-70"
             >
               <Text className="text-sm font-semibold text-brand">
@@ -234,7 +216,8 @@ export function SonglessCard({ playlist, onChangePlaylist }: { playlist: Songles
             <Pressable
               key={s.id}
               accessibilityRole="button"
-              onPress={() => guess(s)}
+              disabled={tryMutation.isPending}
+              onPress={() => submitTry(s)}
               className="rounded-2xl px-4 py-2 active:bg-surface-sunken"
             >
               <Text numberOfLines={1} className="text-base text-ink">
@@ -247,25 +230,44 @@ export function SonglessCard({ playlist, onChangePlaylist }: { playlist: Songles
           ))}
         </View>
       ) : (
-        <View className="flex-row gap-2">
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => (audio.playing ? player.pause() : player.play())}
-            className="flex-1 flex-row items-center justify-center gap-2 rounded-full bg-brand-soft py-3 active:opacity-70"
-          >
-            <Ionicons name={audio.playing ? 'pause' : 'play'} size={16} color={colors.brand} />
-            <Text className="text-sm font-semibold text-brand">{audio.playing ? 'Pause' : 'Listen'}</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={nextSong}
-            className="flex-1 flex-row items-center justify-center gap-2 rounded-full bg-brand py-3 active:opacity-80"
-          >
-            <Text className="text-sm font-semibold text-white">Next song</Text>
-            <Ionicons name="arrow-forward" size={16} color="white" />
-          </Pressable>
+        <View className="gap-3">
+          <View className="flex-row gap-2">
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => (audio.playing ? player.pause() : player.play())}
+              className="flex-1 flex-row items-center justify-center gap-2 rounded-full bg-brand-soft py-3 active:opacity-70"
+            >
+              <Ionicons name={audio.playing ? 'pause' : 'play'} size={16} color={colors.brand} />
+              <Text className="text-sm font-semibold text-brand">{audio.playing ? 'Pause' : 'Listen'}</Text>
+            </Pressable>
+            {round.memoryId ? (
+              <View className="flex-1 flex-row items-center justify-center gap-2 rounded-full bg-emerald-500/15 py-3">
+                <Ionicons name="checkmark" size={16} color="#10B981" />
+                <Text className="text-sm font-semibold text-emerald-500">Memory saved</Text>
+              </View>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                onPress={openMemory}
+                className="flex-1 flex-row items-center justify-center gap-2 rounded-full bg-brand py-3 active:opacity-80"
+              >
+                <Ionicons name="bookmark" size={16} color="white" />
+                <Text className="text-sm font-semibold text-white">How did it feel?</Text>
+              </Pressable>
+            )}
+          </View>
+          <Text className="text-center text-xs text-ink-faint">A new song from this playlist tomorrow</Text>
         </View>
       )}
+
+      <SonglessMemoryModal
+        song={song}
+        visible={memoryOpen}
+        saving={saveMemory.isPending}
+        error={saveMemory.error?.message}
+        onSave={(feeling) => saveMemory.mutate({ feeling }, { onSuccess: () => setMemoryOpen(false) })}
+        onClose={() => setMemoryOpen(false)}
+      />
     </View>
   );
 }
@@ -306,7 +308,7 @@ export function SonglessSetupCard({ onSetUp }: { onSetUp: () => void }) {
       </View>
       <View className="flex-1">
         <Text className="font-hand text-lg text-brand">* Songless</Text>
-        <Text className="text-base text-ink">Guess songs from your playlist in 0.1s</Text>
+        <Text className="text-base text-ink">Guess a song a day from your playlist</Text>
         <Text className="text-sm text-ink-muted">Paste a Spotify playlist link to start</Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />

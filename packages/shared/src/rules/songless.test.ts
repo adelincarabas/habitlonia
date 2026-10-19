@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseSpotifyPlaylistId, type SonglessSong } from '../types';
-import { isCorrectGuess, normalizeSongText, pickNextSong, searchSongs } from './songless';
+import { applySonglessTry, isCorrectGuess, normalizeSongText, pickNextSong, searchSongs } from './songless';
 
 const song = (id: string, title: string, artist: string): SonglessSong => ({ id, title, artist, previewUrl: id });
 
@@ -35,6 +35,16 @@ describe('songless', () => {
     const again = pickNextSong(songs, new Set(['1', '2', '3', '4']), '4', () => 0.99);
     expect(again?.id).toBe('3');
     expect(pickNextSong([], new Set())).toBeUndefined();
+  });
+
+  it('wins on the right pick and loses once every try is used', () => {
+    expect(applySonglessTry(songs[0]!, [], songs[0]!)).toEqual({ attempts: [], status: 'won' });
+    expect(applySonglessTry(songs[0]!, [], songs[1]!)).toEqual({
+      attempts: [{ kind: 'wrong', song: songs[1] }],
+      status: 'guessing',
+    });
+    const fiveSkips = Array.from({ length: 5 }, () => ({ kind: 'skip' as const }));
+    expect(applySonglessTry(songs[0]!, fiveSkips, null).status).toBe('lost');
   });
 });
 

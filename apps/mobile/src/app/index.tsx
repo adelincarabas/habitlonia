@@ -20,8 +20,9 @@ export default function TodayScreen() {
 
   const today = useToday(selectedDay);
   const entries = useTodayEntries(today.data, tab);
-  const songless = useSongless();
   const now = useNow();
+  // Songless follows the real day, not the one picked on the week strip: each day has its own song.
+  const songless = useSongless(toDateKey(now));
   const { state } = useAuth();
   const name = state.status === 'signedIn' ? state.user.name : '';
 
@@ -56,8 +57,14 @@ export default function TodayScreen() {
 
           {today.data?.messageOfTheDay && <MessageOfTheDayCard message={today.data.messageOfTheDay} />}
           {songless.data &&
-            (songless.data.playlist ? (
-              <SonglessCard playlist={songless.data.playlist} onChangePlaylist={() => router.push('/songless')} />
+            (songless.data.playlist && songless.data.round ? (
+              <SonglessCard
+                // A new playlist or a new day starts a fresh round.
+                key={`${songless.data.playlist.id}/${songless.data.round.date}`}
+                playlist={songless.data.playlist}
+                round={songless.data.round}
+                onChangePlaylist={() => router.push('/songless')}
+              />
             ) : (
               <SonglessSetupCard onSetUp={() => router.push('/songless')} />
             ))}
