@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HabitChart } from '@/components/HabitChart';
 import { IconButton } from '@/components/IconButton';
+import { InsightsCard } from '@/components/InsightsCard';
 import { SegmentedTabs } from '@/components/SegmentedTabs';
 import { useAuth } from '@/lib/auth';
 import { THEME_OPTIONS, useThemePreference } from '@/lib/theme-preference';
@@ -48,6 +49,10 @@ export default function ProfileScreen() {
 
           <View className="pt-10">
             <HabitChart />
+          </View>
+
+          <View className="pt-8">
+            <InsightsCard />
           </View>
 
           <View className="gap-2 pt-8">

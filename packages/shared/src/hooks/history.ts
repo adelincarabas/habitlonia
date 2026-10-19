@@ -11,3 +11,11 @@ export function useHabitHistory(from: Date, to: Date) {
   const toKey = toDateKey(to);
   return useQuery({ queryKey: historyKey(fromKey, toKey), queryFn: () => api.getHabitHistory(fromKey, toKey) });
 }
+
+export const insightsKey = ['insights'] as const;
+
+/** Smart insights over the last few months, e.g. which habits go together and the weakest weekday. */
+export function useInsights() {
+  const api = useApi();
+  return useQuery({ queryKey: insightsKey, queryFn: () => api.getInsights() });
+}
