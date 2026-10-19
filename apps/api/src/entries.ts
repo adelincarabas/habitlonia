@@ -22,6 +22,7 @@ type EntryRow = {
   color: string;
   created_at: string;
   ends_at: string | null;
+  done: number;
 };
 
 type PhotoRow = { id: string; created_at: string };
@@ -37,6 +38,7 @@ const toEntry = (row: EntryRow): Entry => ({
   endsAt: row.ends_at ?? undefined,
   // A habit occurrence that got a description or photos is stored under its occurrence id.
   habitId: parseOccurrenceId(row.id)?.habitId,
+  done: row.done ? true : undefined,
 });
 
 const toPhoto = (row: PhotoRow): EntryPhoto => ({
@@ -45,10 +47,10 @@ const toPhoto = (row: PhotoRow): EntryPhoto => ({
   createdAt: row.created_at,
 });
 
-const ENTRY_COLUMNS = 'id, kind, title, description, tag, color, created_at, ends_at';
+const ENTRY_COLUMNS = 'id, kind, title, description, tag, color, created_at, ends_at, done';
 
 const insertEntry = db.prepare(
-  'INSERT INTO entries (id, user_id, kind, title, description, tag, color, created_at, ends_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  'INSERT INTO entries (id, user_id, kind, title, description, tag, color, created_at, ends_at, done) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 );
 const selectBetween = db.prepare(
   `SELECT ${ENTRY_COLUMNS} FROM entries
@@ -57,7 +59,7 @@ const selectBetween = db.prepare(
 );
 const selectOne = db.prepare(`SELECT ${ENTRY_COLUMNS} FROM entries WHERE id = ? AND user_id = ?`);
 const updateOne = db.prepare(
-  `UPDATE entries SET title = ?, description = ? WHERE id = ? AND user_id = ?`,
+  `UPDATE entries SET title = ?, description = ?, done = ? WHERE id = ? AND user_id = ?`,
 );
 
 const insertPhoto = db.prepare(
@@ -81,6 +83,7 @@ function insert(userId: string, entry: Entry) {
     entry.color,
     entry.createdAt,
     entry.endsAt ?? null,
+    entry.done ? 1 : 0,
   );
 }
 
@@ -146,8 +149,10 @@ export function updateEntry(userId: string, id: string, input: UpdateEntryInput)
   const title = input.title ?? entry.title;
   // Present-but-empty clears the description; absent leaves it alone.
   const description = input.description === undefined ? entry.description : input.description || undefined;
-  updateOne.run(title, description ?? null, id, userId);
-  return { ...entry, title, description };
+  // Only habits can be checked off.
+  const done = entry.kind === 'habit' && input.done !== undefined ? input.done || undefined : entry.done;
+  updateOne.run(title, description ?? null, done ? 1 : 0, id, userId);
+  return { ...entry, title, description, done };
 }
 
 export class TooManyPhotosError extends Error {}

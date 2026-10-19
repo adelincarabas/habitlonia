@@ -6,15 +6,20 @@ import {
   AddPhotoInput,
   CreateEntryInput,
   CreateHabitInput,
+  daysBetween,
   fromDateKey,
+  habitHistory,
   habitOccurrences,
   ImportSonglessPlaylistInput,
+  MAX_HISTORY_DAYS,
   MAX_PHOTO_BYTES,
   MAX_PHOTOS_PER_ENTRY,
   summarizeDay,
   toDateKey,
   UpdateEntryInput,
   weekOf,
+  type Entry,
+  type HabitHistoryResponse,
   type OkResponse,
   type SonglessResponse,
   type TodayResponse,
@@ -97,9 +102,23 @@ app.use('/today', requireAuth);
 app.use('/entries', requireAuth);
 app.use('/entries/*', requireAuth);
 app.use('/habits', requireAuth);
+app.use('/history', requireAuth);
 app.use('/focus/*', requireAuth);
 app.use('/songless', requireAuth);
 app.use('/songless/playlist', requireAuth);
+
+/** The user's entries on `days` (consecutive), with each repeating habit's occurrences filled in. */
+function entriesOn(userId: string, days: Date[]): Entry[] {
+  const stored = getEntriesBetween(userId, days[0]!, addDays(days.at(-1)!, 1));
+  // Occurrences that were edited or checked off are already stored; the stored copy replaces the generated one.
+  const storedIds = new Set(stored.map((entry) => entry.id));
+  return [
+    ...stored,
+    ...getHabits(userId)
+      .flatMap((habit) => habitOccurrences(habit, days))
+      .filter((entry) => !storedIds.has(entry.id)),
+  ];
+}
 
 // GET /today?date=2026-10-18
 // Returns everything the Today screen needs. If no date is given, uses today.
@@ -116,17 +135,8 @@ app.get('/today', (c) => {
     return c.json({ error: 'date must look like YYYY-MM-DD' }, 400);
   }
 
-  const userId = c.get('user').id;
   const days = weekOf(date);
-  const stored = getEntriesBetween(userId, days[0]!, addDays(days[6]!, 1));
-  // Occurrences that were edited are already stored; the stored copy replaces the generated one.
-  const storedIds = new Set(stored.map((entry) => entry.id));
-  const weekEntries = [
-    ...stored,
-    ...getHabits(userId)
-      .flatMap((habit) => habitOccurrences(habit, days))
-      .filter((entry) => !storedIds.has(entry.id)),
-  ];
+  const weekEntries = entriesOn(c.get('user').id, days);
   const entriesForDay = weekEntries.filter((entry) => toDateKey(new Date(entry.createdAt)) === dateKey);
   const week = days.map((weekDay) => summarizeDay(weekDay, weekEntries));
 
@@ -135,6 +145,30 @@ app.get('/today', (c) => {
     focus: getFocus(),
     entries: entriesForDay,
     week: week,
+  };
+
+  return c.json(response);
+});
+
+// GET /history?from=2026-01-01&to=2026-12-31
+// Habits checked off and missed on each day of the range, for the profile chart and calendar.
+app.get('/history', (c) => {
+  const from = fromDateKey(c.req.query('from') ?? '');
+  const to = fromDateKey(c.req.query('to') ?? '');
+
+  if (!from || !to) {
+    return c.json({ error: 'from and to must look like YYYY-MM-DD' }, 400);
+  }
+
+  // Checked on the dates first, so a silly range is turned away before it's walked day by day.
+  const days = to >= from && to.getTime() - from.getTime() < MAX_HISTORY_DAYS * 86_400_000 ? daysBetween(from, to) : [];
+
+  if (days.length === 0 || days.length > MAX_HISTORY_DAYS) {
+    return c.json({ error: `the range must be 1 to ${MAX_HISTORY_DAYS} days` }, 400);
+  }
+
+  const response: HabitHistoryResponse = {
+    days: habitHistory(entriesOn(c.get('user').id, days), days, new Date()),
   };
 
   return c.json(response);

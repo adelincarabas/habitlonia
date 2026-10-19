@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { HabitChart } from '@/components/HabitChart';
 import { IconButton } from '@/components/IconButton';
 import { SegmentedTabs } from '@/components/SegmentedTabs';
 import { useAuth } from '@/lib/auth';
@@ -33,37 +34,42 @@ export default function ProfileScreen() {
         <View className="flex-row items-center justify-between px-4 pt-2">
           <IconButton icon="close" label="Close" variant="raised" onPress={close} />
           <Text className="font-hand text-4xl text-ink">Profile</Text>
-          {/* Keeps the title centered against the close button. */}
-          <View className="h-10 w-10" />
+          <IconButton icon="calendar-outline" label="Calendar" variant="raised" onPress={() => router.push('/calendar')} />
         </View>
 
-        <View className="items-center gap-2 px-4 pt-10">
-          <View className="h-24 w-24 items-center justify-center rounded-full bg-brand-soft">
-            <Text className="font-hand text-5xl text-brand">{user.name.charAt(0).toUpperCase()}</Text>
+        <ScrollView contentContainerClassName="grow">
+          <View className="items-center gap-2 px-4 pt-10">
+            <View className="h-24 w-24 items-center justify-center rounded-full bg-brand-soft">
+              <Text className="font-hand text-5xl text-brand">{user.name.charAt(0).toUpperCase()}</Text>
+            </View>
+            <Text className="mt-2 font-hand text-4xl text-ink">{user.name}</Text>
+            <Text className="text-ink-muted">{user.email}</Text>
           </View>
-          <Text className="mt-2 font-hand text-4xl text-ink">{user.name}</Text>
-          <Text className="text-ink-muted">{user.email}</Text>
-        </View>
 
-        <View className="gap-2 pt-10">
-          <Text className="px-5 text-sm text-ink-muted">Theme</Text>
-          <SegmentedTabs tabs={THEME_OPTIONS} value={preference} onChange={setPreference} />
-        </View>
+          <View className="pt-10">
+            <HabitChart />
+          </View>
 
-        <View className="mt-auto px-6 pb-6">
-          <Pressable
-            accessibilityRole="button"
-            disabled={signingOut}
-            onPress={logOut}
-            className="h-12 items-center justify-center rounded-full bg-surface shadow-sm shadow-black/5 active:opacity-70 disabled:opacity-60"
-          >
-            {signingOut ? (
-              <ActivityIndicator />
-            ) : (
-              <Text className="text-base font-semibold text-[#A63D2A]">Log out</Text>
-            )}
-          </Pressable>
-        </View>
+          <View className="gap-2 pt-8">
+            <Text className="px-5 text-sm text-ink-muted">Theme</Text>
+            <SegmentedTabs tabs={THEME_OPTIONS} value={preference} onChange={setPreference} />
+          </View>
+
+          <View className="mt-auto px-6 pb-6 pt-10">
+            <Pressable
+              accessibilityRole="button"
+              disabled={signingOut}
+              onPress={logOut}
+              className="h-12 items-center justify-center rounded-full bg-surface shadow-sm shadow-black/5 active:opacity-70 disabled:opacity-60"
+            >
+              {signingOut ? (
+                <ActivityIndicator />
+              ) : (
+                <Text className="text-base font-semibold text-[#A63D2A]">Log out</Text>
+              )}
+            </Pressable>
+          </View>
+        </ScrollView>
       </View>
     </SafeAreaView>
   );

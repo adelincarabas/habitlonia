@@ -2,21 +2,21 @@ import type { Entry, EntryKind } from '../types';
 import { dayPeriod, formatClock, formatClockRange, formatSpan, toDateKey } from './time';
 
 /**
- * The Ledger: a plan for the rest of the day and a recap of what's happened so far, written from
+ * The Rundown: a plan for the rest of the day and a recap of what's happened so far, written from
  * hand-made rules. Phrasings are picked per day and per habit, so the page reads differently from
  * one day to the next but stays the same while you look at it.
  */
 
 /** tip: advice for something ahead. nudge: a habit that slipped by. done: a finished habit. note: a logged entry. */
-export type LedgerTone = 'tip' | 'nudge' | 'done' | 'note';
+export type RundownTone = 'tip' | 'nudge' | 'done' | 'note';
 
-export type LedgerItem = { title: string; time: string; note: string; tone: LedgerTone };
-export type LedgerSection = { headline: string; summary: string; items: LedgerItem[] };
-export type Ledger = { plan: LedgerSection; recap: LedgerSection };
+export type RundownItem = { title: string; time: string; note: string; tone: RundownTone };
+export type RundownSection = { headline: string; summary: string; items: RundownItem[] };
+export type Rundown = { plan: RundownSection; recap: RundownSection };
 
-export type LedgerOptions = {
+export type RundownOptions = {
   now?: Date;
-  /** Whether a habit occurrence was checked off. Until check-offs exist, every passed habit counts as not done. */
+  /** Whether a habit occurrence was checked off. Defaults to the entry's own `done` flag. */
   isDone?: (habit: Entry) => boolean;
 };
 
@@ -98,7 +98,7 @@ function tipFor(habit: Entry, now: Date, seed: string): string {
   return pick(TIPS_BY_PERIOD[dayPeriod(start)], seed);
 }
 
-function writePlan(ahead: Entry[], day: Date, now: Date, isToday: boolean, isPast: boolean, seed: string): LedgerSection {
+function writePlan(ahead: Entry[], day: Date, now: Date, isToday: boolean, isPast: boolean, seed: string): RundownSection {
   if (isPast) {
     return { headline: 'This day is behind you', summary: "There's nothing left to plan here. The recap shows what it held.", items: [] };
   }
@@ -229,7 +229,7 @@ function writeRecap(
   isToday: boolean,
   isPast: boolean,
   seed: string,
-): LedgerSection {
+): RundownSection {
   if (!isToday && !isPast) {
     return { headline: 'Nothing yet', summary: "This day hasn't started. Come back once it has.", items: [] };
   }
@@ -278,7 +278,7 @@ function writeRecap(
     );
   }
 
-  const items: LedgerItem[] = [...passed, ...logged]
+  const items: RundownItem[] = [...passed, ...logged]
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .map((entry) => {
       const itemSeed = `${seed}|${entry.id}`;
@@ -297,8 +297,8 @@ function writeRecap(
   return { headline, summary: sentences.join(' '), items };
 }
 
-/** The Ledger for `day`, given that day's entries (habit occurrences included, as /today returns them). */
-export function writeLedger(entries: Entry[], day: Date, { now = new Date(), isDone = () => false }: LedgerOptions = {}): Ledger {
+/** The Rundown for `day`, given that day's entries (habit occurrences included, as /today returns them). */
+export function writeRundown(entries: Entry[], day: Date, { now = new Date(), isDone = (habit) => habit.done === true }: RundownOptions = {}): Rundown {
   const dateKey = toDateKey(day);
   const todayKey = toDateKey(now);
   const isToday = dateKey === todayKey;

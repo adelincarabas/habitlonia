@@ -31,7 +31,8 @@ function RootStack() {
         <Stack.Screen name="add" options={{ presentation: 'modal' }} />
         <Stack.Screen name="profile" options={{ presentation: 'modal' }} />
         <Stack.Screen name="entry/[id]" />
-        <Stack.Screen name="ledger" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="rundown" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="calendar" options={{ presentation: 'modal' }} />
         <Stack.Screen name="songless" options={{ presentation: 'modal' }} />
       </Stack.Protected>
     </Stack>

@@ -37,9 +37,16 @@ per minute) and `/auth/reset-password` trades it plus a new password for a sessi
 Resend when `RESEND_API_KEY` is set; without it, dev prints them in the `pnpm dev:api` terminal and
 production refuses to start a reset.
 
-Ledger: the Ledger screen (the "Ledger" button on Today) shows a plan for the rest of the day and a recap
-of what's happened. It's written by hand-made rules, no AI (`packages/shared/src/rules/ledger.ts`): tips for
-upcoming habits, a note per logged memory/feeling/thought, and a nudge for each habit whose time passed.
+Rundown: the Rundown screen (the "Rundown" button on Today) shows a plan for the rest of the day and a recap
+of what's happened. It's written by hand-made rules, no AI (`packages/shared/src/rules/rundown.ts`): tips for
+upcoming habits, a note per logged memory/feeling/thought, and a nudge for each habit whose time passed
+without being checked off.
+
+Habits are checked off with the circle next to them on Today (or on their detail screen). A repeating
+habit's occurrence is saved as an entry the first time it's checked, like when it's edited. The profile
+shows a chart of habits done vs. missed (last week, month or 3 months), and its calendar button opens a
+year view where days with a habit done are blue; tapping a day opens that day's Rundown. Both read
+`/history?from=…&to=…`.
 
 Put API secrets in `apps/api/.env` (git-ignored; see `.env.example`). `pnpm dev:api` loads it.
 

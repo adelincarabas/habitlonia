@@ -4,9 +4,9 @@ import { Pressable, Text, View } from 'react-native';
 import { useThemeColors } from '@/lib/theme';
 import { IconButton } from './IconButton';
 
-type Props = { now: Date; name: string; onLedger?: () => void; onHistory?: () => void };
+type Props = { now: Date; name: string; onRundown?: () => void; onHistory?: () => void };
 
-export function GreetingRow({ now, name, onLedger, onHistory }: Props) {
+export function GreetingRow({ now, name, onRundown, onHistory }: Props) {
   const colors = useThemeColors();
 
   return (
@@ -24,10 +24,10 @@ export function GreetingRow({ now, name, onLedger, onHistory }: Props) {
       )}
       <IconButton icon="time-outline" label="History" onPress={onHistory} />
       <Pressable
-        onPress={onLedger}
+        onPress={onRundown}
         className="flex-row items-center gap-1 rounded-full bg-surface px-4 py-2 shadow-sm shadow-black/5 active:opacity-70"
       >
-        <Text className="font-semibold text-brand">Ledger</Text>
+        <Text className="font-semibold text-brand">Rundown</Text>
         <Ionicons name="chevron-forward" size={16} color={colors.brand} />
       </Pressable>
     </View>

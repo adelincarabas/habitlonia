@@ -64,7 +64,8 @@ db.exec(`
     tag        TEXT,
     color      TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    ends_at    TEXT
+    ends_at    TEXT,
+    done       INTEGER NOT NULL DEFAULT 0 -- habits only: 1 once checked off
   );
 
   CREATE INDEX IF NOT EXISTS entries_user_created ON entries (user_id, created_at);
@@ -131,4 +132,9 @@ db.exec('PRAGMA foreign_keys = ON; PRAGMA legacy_alter_table = OFF;');
 const entryColumns = db.prepare('PRAGMA table_info(entries)').all() as { name: string }[];
 if (!entryColumns.some((column) => column.name === 'description')) {
   db.exec('ALTER TABLE entries ADD COLUMN description TEXT');
+}
+
+// Databases created before habits could be checked off.
+if (!entryColumns.some((column) => column.name === 'done')) {
+  db.exec('ALTER TABLE entries ADD COLUMN done INTEGER NOT NULL DEFAULT 0');
 }

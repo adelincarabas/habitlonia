@@ -9,6 +9,7 @@ import {
   EntryPhoto,
   FocusSession,
   Habit,
+  HabitHistoryResponse,
   ImportSonglessPlaylistInput,
   ForgotPasswordInput,
   ForgotPasswordResponse,
@@ -92,6 +93,9 @@ export function createApiClient(baseUrl: string, options: ApiClientOptions = {})
         method: 'POST',
         body: JSON.stringify(CreateHabitInput.parse(input)),
       }),
+    /** Habit check-offs per day from `from` to `to` (YYYY-MM-DD, both included). */
+    getHabitHistory: (from: string, to: string) =>
+      request(HabitHistoryResponse, `/history?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
     getEntry: (id: string) => request(EntryDetail, `/entries/${encodeURIComponent(id)}`),
     updateEntry: (id: string, input: UpdateEntryInput) =>
       request(Entry, `/entries/${encodeURIComponent(id)}`, {

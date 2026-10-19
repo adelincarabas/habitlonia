@@ -7,12 +7,20 @@ import {
   type EntryDetail,
   type EntryKind,
 } from '@habitlonia/shared';
-import { useAddEntryPhoto, useApi, useEntry, useRemoveEntryPhoto, useUpdateEntry } from '@habitlonia/shared/hooks';
+import {
+  useAddEntryPhoto,
+  useApi,
+  useEntry,
+  useRemoveEntryPhoto,
+  useSetHabitDone,
+  useUpdateEntry,
+} from '@habitlonia/shared/hooks';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DictationButton } from '@/components/DictationButton';
+import { DoneCheck } from '@/components/DoneCheck';
 import { IconButton } from '@/components/IconButton';
 import { SUPPORTED_PHOTO_TYPES, pickPhotos } from '@/lib/photos';
 import { useThemeColors } from '@/lib/theme';
@@ -76,6 +84,7 @@ export default function EntryDetailScreen() {
 function EntryForm({ entry }: { entry: EntryDetail }) {
   const colors = useThemeColors();
   const update = useUpdateEntry(entry.id);
+  const setDone = useSetHabitDone();
 
   const [title, setTitle] = useState(entry.title);
   const [description, setDescription] = useState(entry.description ?? '');
@@ -120,6 +129,18 @@ function EntryForm({ entry }: { entry: EntryDetail }) {
             {[day, when, entry.tag].filter(Boolean).join(' · ')}
           </Text>
         </View>
+
+        {entry.kind === 'habit' && (
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: entry.done === true }}
+            onPress={() => setDone.mutate({ id: entry.id, done: !entry.done })}
+            className="flex-row items-center gap-3 rounded-2xl bg-surface px-4 py-3 active:opacity-70"
+          >
+            <DoneCheck done={entry.done === true} />
+            <Text className="flex-1 text-base font-semibold text-ink">{entry.done ? 'Done' : 'Mark as done'}</Text>
+          </Pressable>
+        )}
 
         <View className="gap-1.5">
           <Text className="text-xs font-medium text-ink-muted">Title</Text>

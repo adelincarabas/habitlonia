@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AddPhotoInput, EntryDetail, UpdateEntryInput } from '../types';
+import type { AddPhotoInput, EntryDetail, TodayResponse, UpdateEntryInput } from '../types';
 import { useApi } from './api-context';
 
 export const entryKey = (id: string) => ['entry', id] as const;
@@ -19,6 +19,28 @@ export function useUpdateEntry(id: string) {
       // The title shows on the Today timeline too.
       return qc.invalidateQueries({ queryKey: ['today'] });
     },
+  });
+}
+
+/** Checks a habit off, or un-checks it. The tick shows right away; a failed save is undone by the refetch. */
+export function useSetHabitDone() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, done }: { id: string; done: boolean }) => api.updateEntry(id, { done }),
+    onMutate: async ({ id, done }) => {
+      await qc.cancelQueries({ queryKey: ['today'] });
+      qc.setQueriesData<TodayResponse>({ queryKey: ['today'] }, (old) =>
+        old ? { ...old, entries: old.entries.map((e) => (e.id === id ? { ...e, done } : e)) } : old,
+      );
+      qc.setQueryData<EntryDetail>(entryKey(id), (old) => (old ? { ...old, done } : old));
+    },
+    onSettled: (_, __, { id }) =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ['today'] }),
+        qc.invalidateQueries({ queryKey: ['history'] }),
+        qc.invalidateQueries({ queryKey: entryKey(id) }),
+      ]),
   });
 }
 

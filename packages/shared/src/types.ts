@@ -20,6 +20,8 @@ export const Entry = z.object({
   color: z.string(),
   /** Set when this entry is one day's occurrence of a repeating habit. */
   habitId: z.string().optional(),
+  /** Whether a habit was checked off. Only habits have one; absent means not done. */
+  done: z.boolean().optional(),
 });
 export type Entry = z.infer<typeof Entry>;
 
@@ -82,10 +84,11 @@ export const CreateHabitInput = Habit.omit({ id: true }).refine((h) => h.startMi
   message: 'A habit must end after it starts',
 });
 export type CreateHabitInput = z.infer<typeof CreateHabitInput>;
-/** Edits made on the detail screen. An empty description clears it. */
+/** Edits made on the detail screen. An empty description clears it. `done` is ignored for anything but habits. */
 export const UpdateEntryInput = z.object({
   title: z.string().trim().min(1, 'Give it a title').max(200).optional(),
   description: EntryDescription.optional(),
+  done: z.boolean().optional(),
 });
 export type UpdateEntryInput = z.infer<typeof UpdateEntryInput>;
 
@@ -141,6 +144,20 @@ export const DaySummary = z.object({
   colors: z.array(z.string()).max(2),
 });
 export type DaySummary = z.infer<typeof DaySummary>;
+
+/** One day of habit check-offs, for the profile chart and the calendar. */
+export const HabitDay = z.object({
+  /** YYYY-MM-DD */
+  date: z.string(),
+  /** Habits checked off. */
+  done: z.number().int().nonnegative(),
+  /** Habits whose time ended without being checked off. */
+  missed: z.number().int().nonnegative(),
+});
+export type HabitDay = z.infer<typeof HabitDay>;
+
+export const HabitHistoryResponse = z.object({ days: z.array(HabitDay) });
+export type HabitHistoryResponse = z.infer<typeof HabitHistoryResponse>;
 
 export const User = z.object({
   id: z.string(),

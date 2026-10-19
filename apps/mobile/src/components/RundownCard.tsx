@@ -1,10 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import type { LedgerSection, LedgerTone } from '@habitlonia/shared';
+import type { RundownSection, RundownTone } from '@habitlonia/shared';
 import type { ComponentProps } from 'react';
 import { Text, View } from 'react-native';
 import { useThemeColors } from '@/lib/theme';
 
-const TONE_ICONS: Partial<Record<LedgerTone, ComponentProps<typeof Ionicons>['name']>> = {
+const TONE_ICONS: Partial<Record<RundownTone, ComponentProps<typeof Ionicons>['name']>> = {
   nudge: 'sparkles',
   done: 'checkmark-circle',
 };
@@ -12,11 +12,11 @@ const TONE_ICONS: Partial<Record<LedgerTone, ComponentProps<typeof Ionicons>['na
 type Props = {
   label: string;
   icon: ComponentProps<typeof Ionicons>['name'];
-  section: LedgerSection;
+  section: RundownSection;
 };
 
-/** One half of the ledger: a headline, a short summary, then a note per habit or entry. */
-export function LedgerCard({ label, icon, section }: Props) {
+/** One half of the rundown: a headline, a short summary, then a note per habit or entry. */
+export function RundownCard({ label, icon, section }: Props) {
   const colors = useThemeColors();
 
   return (

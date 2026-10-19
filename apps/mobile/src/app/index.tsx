@@ -1,5 +1,5 @@
 import { TODAY_TABS, defaultKindForTab, toDateKey, weekOf, type TodayTabKey } from '@habitlonia/shared';
-import { useNow, useSongless, useToday, useTodayEntries } from '@habitlonia/shared/hooks';
+import { useNow, useSetHabitDone, useSongless, useToday, useTodayEntries } from '@habitlonia/shared/hooks';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
@@ -22,6 +22,7 @@ export default function TodayScreen() {
   const entries = useTodayEntries(today.data, tab);
   const songless = useSongless();
   const now = useNow();
+  const setDone = useSetHabitDone();
   const { state } = useAuth();
   const name = state.status === 'signedIn' ? state.user.name : '';
 
@@ -67,11 +68,12 @@ export default function TodayScreen() {
               <GreetingRow
                 now={now}
                 name={name}
-                onLedger={() => router.push({ pathname: '/ledger', params: { date: toDateKey(selectedDay) } })}
+                onRundown={() => router.push({ pathname: '/rundown', params: { date: toDateKey(selectedDay) } })}
               />
               <Timeline
                 entries={entries}
                 onOpen={(entry) => router.push({ pathname: '/entry/[id]', params: { id: entry.id } })}
+                onToggleDone={(entry) => setDone.mutate({ id: entry.id, done: !entry.done })}
               />
             </>
           )}
