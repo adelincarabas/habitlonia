@@ -108,14 +108,13 @@ export function formatDuration(totalSeconds: number): string {
   return `${hours}:${minutes}:${seconds}`;
 }
 
-/** "6:55" style clock time, 12-hour without am/pm, as in the timeline. */
+/** "06:55" / "20:30" style 24-hour clock time, as in the timeline. */
 export function formatClock(iso: string): string {
   const d = new Date(iso);
-  const h = d.getHours() % 12 || 12;
-  return `${h}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return clockText(d.getHours() * 60 + d.getMinutes());
 }
 
-/** "10:00–2:00", for habits on the timeline. */
+/** "10:00–14:00", for habits on the timeline. */
 export function formatClockRange(startIso: string, endIso: string): string {
   return `${formatClock(startIso)}–${formatClock(endIso)}`;
 }

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { defaultKindForTab, entriesForTab, summarizeDay } from './entries';
-import { describeRepeat, habitOccurrences, habitOccursOn, repeatFor } from './habits';
+import { describeRepeat, habitOccurrences, habitOccursOn, parseOccurrenceId, repeatFor } from './habits';
 import {
   clockRangeOn,
   focusElapsedSeconds,
+  formatClock,
   formatDuration,
   formatSpan,
   fromDateKey,
@@ -59,6 +60,12 @@ describe('time rules', () => {
         now,
       ),
     ).toBe(60);
+  });
+
+  it('formats clock times in 24-hour form', () => {
+    expect(formatClock(new Date(2026, 9, 14, 20, 5).toISOString())).toBe('20:05');
+    expect(formatClock(new Date(2026, 9, 14, 8, 30).toISOString())).toBe('08:30');
+    expect(formatClock(new Date(2026, 9, 14, 0, 0).toISOString())).toBe('00:00');
   });
 
   it('parses 24-hour clock text', () => {
@@ -177,6 +184,12 @@ describe('habit rules', () => {
     expect(occurrence).toMatchObject({ id: 'h@2026-10-14', kind: 'habit', habitId: 'h' });
     expect(occurrence!.createdAt).toBe(new Date(2026, 9, 14, 22).toISOString());
     expect(occurrence!.endsAt).toBe(new Date(2026, 9, 15, 1).toISOString());
+  });
+
+  it('reads an occurrence id back into its habit and day', () => {
+    expect(parseOccurrenceId('h@2026-10-14')).toEqual({ habitId: 'h', day: day(14) });
+    expect(parseOccurrenceId('908556b6-2e3a-4579-ae58-b4496ea59490')).toBeNull();
+    expect(parseOccurrenceId('h@2026-13-01')).toBeNull();
   });
 
   it('maps the add screen presets to rules', () => {

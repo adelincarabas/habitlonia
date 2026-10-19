@@ -33,6 +33,11 @@ const selectForUser = db.prepare(
    WHERE user_id = ? ORDER BY created_at`,
 );
 
+const selectOne = db.prepare(
+  `SELECT id, title, tag, color, starts_on, start_minutes, end_minutes, repeat FROM habits
+   WHERE id = ? AND user_id = ?`,
+);
+
 export function addHabit(userId: string, input: CreateHabitInput): Habit {
   const habit: Habit = { id: randomUUID(), ...input };
   insertHabit.run(
@@ -52,4 +57,9 @@ export function addHabit(userId: string, input: CreateHabitInput): Habit {
 
 export function getHabits(userId: string): Habit[] {
   return (selectForUser.all(userId) as HabitRow[]).map(toHabit);
+}
+
+export function getHabit(userId: string, id: string): Habit | null {
+  const row = selectOne.get(id, userId) as HabitRow | undefined;
+  return row ? toHabit(row) : null;
 }
