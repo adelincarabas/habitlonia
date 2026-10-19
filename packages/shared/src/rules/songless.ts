@@ -1,4 +1,4 @@
-import type { SonglessSong } from '../types';
+import { SONGLESS_CLIP_SECONDS, type SonglessAttempt, type SonglessRoundStatus, type SonglessSong } from '../types';
 
 /** Lowercase, no accents, no "(feat. …)" / "- Remastered 2011" tails, so guesses and lookups match loosely. */
 export function normalizeSongText(text: string): string {
@@ -51,4 +51,15 @@ export function pickNextSong(
   const pool = fresh.length > 0 ? fresh : songs.filter((song) => song.id !== lastId);
   const from = pool.length > 0 ? pool : songs;
   return from[Math.floor(random() * from.length)];
+}
+
+/** The round after one more try: a right pick wins, and a wrong pick or a skip uses a try, losing after the last one. */
+export function applySonglessTry(
+  answer: SonglessSong,
+  attempts: SonglessAttempt[],
+  picked: SonglessSong | null,
+): { attempts: SonglessAttempt[]; status: SonglessRoundStatus } {
+  if (picked && isCorrectGuess(answer, picked)) return { attempts, status: 'won' };
+  const next: SonglessAttempt[] = [...attempts, picked ? { kind: 'wrong', song: picked } : { kind: 'skip' }];
+  return { attempts: next, status: next.length >= SONGLESS_CLIP_SECONDS.length ? 'lost' : 'guessing' };
 }

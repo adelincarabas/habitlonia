@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import {
@@ -20,8 +20,10 @@ import {
   weekOf,
   type Entry,
   type HabitHistoryResponse,
+  SonglessMemoryInput,
+  SonglessTryInput,
   type OkResponse,
-  type SonglessResponse,
+  type SonglessRound,
   type TodayResponse,
 } from '@habitlonia/shared';
 import { authRoutes, requireAuth, type AuthEnv } from './auth';
@@ -39,9 +41,15 @@ import { addHabit, getHabits } from './habits';
 import {
   getArtworkUrl,
   getPreviewUrl,
-  getSonglessPlaylist,
+  getSongless,
   importSonglessPlaylist,
+  playSonglessTry,
   PlaylistNotFoundError,
+  removeSonglessPlaylist,
+  RoundNotFoundError,
+  RoundStateError,
+  saveSonglessMemory,
+  selectSonglessPlaylist,
 } from './songless';
 import { getFocus, getMessageOfTheDay, toggleFocus } from './store';
 
@@ -106,6 +114,8 @@ app.use('/history', requireAuth);
 app.use('/focus/*', requireAuth);
 app.use('/songless', requireAuth);
 app.use('/songless/playlist', requireAuth);
+app.use('/songless/playlists/*', requireAuth);
+app.use('/songless/rounds/*', requireAuth);
 
 /** The user's entries on `days` (consecutive), with each repeating habit's occurrences filled in. */
 function entriesOn(userId: string, days: Date[]): Entry[] {
@@ -296,15 +306,22 @@ app.post('/focus/:id/toggle', (c) => {
   return c.json(session);
 });
 
-// GET /songless
-// The playlist the Songless game on the Today screen plays from, or null before one is picked.
+// GET /songless?date=2026-10-19
+// Everything the Songless card needs: the playlist being played, its song of the day (picked on the
+// first ask) and the user's saved playlists. If no date is given, uses today.
 app.get('/songless', (c) => {
-  const response: SonglessResponse = { playlist: getSonglessPlaylist(c.get('user').id) };
-  return c.json(response);
+  const day = c.req.query('date') ?? toDateKey(new Date());
+
+  if (!fromDateKey(day)) {
+    return c.json({ error: 'date must look like YYYY-MM-DD' }, 400);
+  }
+
+  return c.json(getSongless(c.get('user').id, day));
 });
 
 // PUT /songless/playlist
 // Body is { link } with a Spotify playlist link, as copied from Spotify's Share menu.
+// The playlist is saved with its link and becomes the one being played; adding it again reloads its songs.
 app.put('/songless/playlist', async (c) => {
   const body = await c.req.json().catch(() => null);
   const result = ImportSonglessPlaylistInput.safeParse(body);
@@ -327,6 +344,73 @@ app.put('/songless/playlist', async (c) => {
     return c.json({ error: 'None of the songs in that playlist have a preview to play' }, 422);
   }
 
-  const response: SonglessResponse = { playlist };
+  return c.json(playlist);
+});
+
+// POST /songless/playlists/:id/select
+// Switches to a playlist the user added before.
+app.post('/songless/playlists/:id/select', (c) => {
+  if (!selectSonglessPlaylist(c.get('user').id, c.req.param('id'))) {
+    return c.json({ error: 'playlist not found' }, 404);
+  }
+
+  const response: OkResponse = { ok: true };
   return c.json(response);
 });
+
+// DELETE /songless/playlists/:id
+app.delete('/songless/playlists/:id', (c) => {
+  if (!removeSonglessPlaylist(c.get('user').id, c.req.param('id'))) {
+    return c.json({ error: 'playlist not found' }, 404);
+  }
+
+  const response: OkResponse = { ok: true };
+  return c.json(response);
+});
+
+// POST /songless/rounds/:playlistId/:date/tries
+// Body is { songId } with the song picked from the playlist, or { songId: null } to skip. Returns the round.
+app.post('/songless/rounds/:playlistId/:date/tries', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const result = SonglessTryInput.safeParse(body);
+
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0]?.message ?? 'invalid input' }, 400);
+  }
+
+  return songlessRoundResponse(c, () =>
+    playSonglessTry(c.get('user').id, c.req.param('playlistId'), c.req.param('date'), result.data.songId),
+  );
+});
+
+// POST /songless/rounds/:playlistId/:date/memory
+// Body is { feeling }: how the song made the user feel. Saved as a memory once the round is over.
+app.post('/songless/rounds/:playlistId/:date/memory', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const result = SonglessMemoryInput.safeParse(body);
+
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0]?.message ?? 'invalid input' }, 400);
+  }
+
+  return songlessRoundResponse(
+    c,
+    () => saveSonglessMemory(c.get('user').id, c.req.param('playlistId'), c.req.param('date'), result.data.feeling),
+    201,
+  );
+});
+
+/** Runs a change to a round and answers with the round, or with why it couldn't be made. */
+function songlessRoundResponse(c: Context<AuthEnv>, change: () => SonglessRound, status: 200 | 201 = 200) {
+  try {
+    return c.json(change(), status);
+  } catch (err) {
+    if (err instanceof RoundNotFoundError) {
+      return c.json({ error: err.message }, 404);
+    }
+    if (err instanceof RoundStateError) {
+      return c.json({ error: err.message }, 409);
+    }
+    throw err;
+  }
+}

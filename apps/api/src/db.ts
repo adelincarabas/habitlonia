@@ -39,6 +39,13 @@ if (migrateActions) {
   // following the rename, and keep the old table's drop from cascading to the photos.
   db.exec('PRAGMA foreign_keys = OFF; PRAGMA legacy_alter_table = ON;');
 }
+// Songless first kept a single playlist per user, without its id or link. Those can't be told apart
+// or reloaded, so that table is dropped and users add their playlist again.
+const songlessColumns = db.prepare('PRAGMA table_info(songless_playlists)').all() as { name: string }[];
+if (songlessColumns.length > 0 && !songlessColumns.some((column) => column.name === 'playlist_id')) {
+  db.exec('DROP TABLE songless_playlists');
+}
+
 db.exec('BEGIN');
 if (migrateActions) {
   db.exec('ALTER TABLE entries RENAME TO entries_before_habits; DROP INDEX entries_user_created;');
@@ -97,14 +104,32 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS entry_photos_entry ON entry_photos (entry_id, created_at);
 
-  -- The Spotify playlist each user plays Songless with. Songs are SonglessSong[] as JSON;
-  -- importing another playlist replaces it.
+  -- The Spotify playlists each user has added to Songless, kept with the link they came from.
+  -- Songs are SonglessSong[] as JSON; adding a playlist again reloads it. The one picked most
+  -- recently (selected_at) is the one being played.
   CREATE TABLE IF NOT EXISTS songless_playlists (
-    user_id    TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    name       TEXT NOT NULL,
-    songs      TEXT NOT NULL,
-    skipped    INTEGER NOT NULL,
-    updated_at TEXT NOT NULL
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    playlist_id TEXT NOT NULL,
+    link        TEXT NOT NULL,
+    name        TEXT NOT NULL,
+    songs       TEXT NOT NULL,
+    skipped     INTEGER NOT NULL,
+    updated_at  TEXT NOT NULL,
+    selected_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, playlist_id)
+  );
+
+  -- One song per playlist per day. Rounds outlive their playlist, so removing and re-adding
+  -- it doesn't give the day's song again. song and attempts are SonglessSong / SonglessAttempt[] as JSON.
+  CREATE TABLE IF NOT EXISTS songless_rounds (
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    playlist_id TEXT NOT NULL,
+    day         TEXT NOT NULL, -- YYYY-MM-DD
+    song        TEXT NOT NULL,
+    attempts    TEXT NOT NULL,
+    status      TEXT NOT NULL CHECK (status IN ('guessing', 'won', 'lost')),
+    memory_id   TEXT REFERENCES entries(id) ON DELETE SET NULL,
+    PRIMARY KEY (user_id, playlist_id, day)
   );
 
   -- At most one live reset code per user; asking again replaces it.

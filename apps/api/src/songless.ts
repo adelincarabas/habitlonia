@@ -1,6 +1,20 @@
-import { normalizeSongText, parseSpotifyPlaylistId, SonglessSong, type SonglessPlaylist } from '@habitlonia/shared';
+import {
+  applySonglessTry,
+  ENTRY_COLORS,
+  normalizeSongText,
+  parseSpotifyPlaylistId,
+  pickNextSong,
+  SonglessAttempt,
+  SonglessSong,
+  type SavedSonglessPlaylist,
+  type SonglessPlaylist,
+  type SonglessResponse,
+  type SonglessRound,
+  type SonglessRoundStatus,
+} from '@habitlonia/shared';
 import { z } from 'zod';
 import { db } from './db';
+import { addEntry } from './entries';
 
 // Playlists are read from Spotify's public embed player (the one websites show), which lists a
 // playlist's songs with their 30s previews to anyone. Spotify's Web API needs each user to log in
@@ -29,28 +43,175 @@ const DeezerTrack = z.object({
 });
 type DeezerTrack = z.infer<typeof DeezerTrack>;
 
-type PlaylistRow = { name: string; songs: string; skipped: number };
+type PlaylistRow = { playlist_id: string; link: string; name: string; songs: string; skipped: number };
+type RoundRow = { song: string; attempts: string; status: SonglessRoundStatus; memory_id: string | null };
 
-const selectPlaylist = db.prepare('SELECT name, songs, skipped FROM songless_playlists WHERE user_id = ?');
+const PLAYLIST_COLUMNS = 'playlist_id, link, name, songs, skipped';
+
+// The one being played comes first.
+const selectPlaylists = db.prepare(
+  `SELECT ${PLAYLIST_COLUMNS} FROM songless_playlists WHERE user_id = ? ORDER BY selected_at DESC`,
+);
+const selectPlaylist = db.prepare(
+  `SELECT ${PLAYLIST_COLUMNS} FROM songless_playlists WHERE user_id = ? AND playlist_id = ?`,
+);
 const upsertPlaylist = db.prepare(
-  `INSERT INTO songless_playlists (user_id, name, songs, skipped, updated_at) VALUES (?, ?, ?, ?, ?)
-   ON CONFLICT (user_id) DO UPDATE SET name = excluded.name, songs = excluded.songs,
-     skipped = excluded.skipped, updated_at = excluded.updated_at`,
+  `INSERT INTO songless_playlists (user_id, playlist_id, link, name, songs, skipped, updated_at, selected_at)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+   ON CONFLICT (user_id, playlist_id) DO UPDATE SET link = excluded.link, name = excluded.name, songs = excluded.songs,
+     skipped = excluded.skipped, updated_at = excluded.updated_at, selected_at = excluded.selected_at`,
+);
+const touchPlaylist = db.prepare('UPDATE songless_playlists SET selected_at = ? WHERE user_id = ? AND playlist_id = ?');
+const deletePlaylist = db.prepare('DELETE FROM songless_playlists WHERE user_id = ? AND playlist_id = ?');
+
+const selectRound = db.prepare(
+  'SELECT song, attempts, status, memory_id FROM songless_rounds WHERE user_id = ? AND playlist_id = ? AND day = ?',
+);
+// Two requests can start the same day's round at once; the first one wins.
+const insertRound = db.prepare(
+  `INSERT OR IGNORE INTO songless_rounds (user_id, playlist_id, day, song, attempts, status)
+   VALUES (?, ?, ?, ?, '[]', 'guessing')`,
+);
+const selectPlayedSongs = db.prepare('SELECT song FROM songless_rounds WHERE user_id = ? AND playlist_id = ? ORDER BY day');
+const selectFinishedOn = db.prepare(
+  `SELECT playlist_id FROM songless_rounds WHERE user_id = ? AND day = ? AND status != 'guessing'`,
+);
+const updateRound = db.prepare(
+  'UPDATE songless_rounds SET attempts = ?, status = ? WHERE user_id = ? AND playlist_id = ? AND day = ?',
+);
+const setRoundMemory = db.prepare(
+  'UPDATE songless_rounds SET memory_id = ? WHERE user_id = ? AND playlist_id = ? AND day = ?',
 );
 
-export function getSonglessPlaylist(userId: string): SonglessPlaylist | null {
-  const row = selectPlaylist.get(userId) as PlaylistRow | undefined;
-  if (!row) return null;
-  // A playlist saved in an older shape is treated as none, so the user just pastes the link again.
+/** A playlist saved in an older shape is treated as none, so the user just adds it again. */
+function toPlaylist(row: PlaylistRow): SonglessPlaylist | null {
   const songs = z.array(SonglessSong).safeParse(JSON.parse(row.songs));
-  return songs.success ? { name: row.name, songs: songs.data, skipped: row.skipped } : null;
+  return songs.success
+    ? { id: row.playlist_id, link: row.link, name: row.name, songs: songs.data, skipped: row.skipped }
+    : null;
+}
+
+function getPlaylist(userId: string, playlistId: string): SonglessPlaylist | null {
+  const row = selectPlaylist.get(userId, playlistId) as PlaylistRow | undefined;
+  return row ? toPlaylist(row) : null;
+}
+
+function readRound(userId: string, playlistId: string, day: string): SonglessRound | null {
+  const row = selectRound.get(userId, playlistId, day) as RoundRow | undefined;
+  if (!row) return null;
+  const song = SonglessSong.parse(JSON.parse(row.song));
+  return {
+    playlistId,
+    date: day,
+    previewUrl: song.previewUrl,
+    // The answer stays on the server until the round is over.
+    song: row.status === 'guessing' ? null : song,
+    attempts: z.array(SonglessAttempt).parse(JSON.parse(row.attempts)),
+    status: row.status,
+    memoryId: row.memory_id,
+  };
+}
+
+/** The playlist's round for `day`, picking its song the first time it's asked for. */
+function getOrStartRound(userId: string, playlist: SonglessPlaylist, day: string): SonglessRound | null {
+  const existing = readRound(userId, playlist.id, day);
+  if (existing) return existing;
+
+  // Songs from earlier days don't come back until every song in the playlist has had its day.
+  const played = (selectPlayedSongs.all(userId, playlist.id) as { song: string }[]).map(
+    (row) => SonglessSong.parse(JSON.parse(row.song)).id,
+  );
+  const song = pickNextSong(playlist.songs, new Set(played), played[played.length - 1]);
+  if (!song) return null;
+  insertRound.run(userId, playlist.id, day, JSON.stringify(song));
+  return readRound(userId, playlist.id, day);
+}
+
+/** Everything Songless shows on `day`: the playlist being played, its round that day, and every saved playlist. */
+export function getSongless(userId: string, day: string): SonglessResponse {
+  const finished = new Set(
+    (selectFinishedOn.all(userId, day) as { playlist_id: string }[]).map((row) => row.playlist_id),
+  );
+  const playlists: SavedSonglessPlaylist[] = [];
+  let playing: SonglessPlaylist | null = null;
+  for (const row of selectPlaylists.all(userId) as PlaylistRow[]) {
+    const playlist = toPlaylist(row);
+    if (!playlist) continue;
+    playing ??= playlist;
+    playlists.push({
+      id: playlist.id,
+      link: playlist.link,
+      name: playlist.name,
+      songCount: playlist.songs.length,
+      playedToday: finished.has(playlist.id),
+    });
+  }
+  return { playlist: playing, playlists, round: playing && getOrStartRound(userId, playing, day) };
+}
+
+/** Plays a saved playlist again. False if the user has no such playlist. */
+export function selectSonglessPlaylist(userId: string, playlistId: string): boolean {
+  return touchPlaylist.run(new Date().toISOString(), userId, playlistId).changes > 0;
+}
+
+export function removeSonglessPlaylist(userId: string, playlistId: string): boolean {
+  return deletePlaylist.run(userId, playlistId).changes > 0;
+}
+
+export class RoundNotFoundError extends Error {}
+/** The round is in the wrong state for the request: already over for a guess, not over yet for a memory. */
+export class RoundStateError extends Error {}
+
+/** A pick from the playlist (by song id) or a skip (null) in the day's round. */
+export function playSonglessTry(userId: string, playlistId: string, day: string, songId: string | null): SonglessRound {
+  const row = selectRound.get(userId, playlistId, day) as RoundRow | undefined;
+  const playlist = getPlaylist(userId, playlistId);
+  if (!row || !playlist) throw new RoundNotFoundError('No song to guess for that playlist on that day');
+  if (row.status !== 'guessing') throw new RoundStateError("That day's song has already been played");
+
+  let picked: SonglessSong | null = null;
+  if (songId !== null) {
+    picked = playlist.songs.find((song) => song.id === songId) ?? null;
+    if (!picked) throw new RoundNotFoundError("That song isn't in the playlist");
+  }
+
+  const answer = SonglessSong.parse(JSON.parse(row.song));
+  const next = applySonglessTry(answer, z.array(SonglessAttempt).parse(JSON.parse(row.attempts)), picked);
+  updateRound.run(JSON.stringify(next.attempts), next.status, userId, playlistId, day);
+  return readRound(userId, playlistId, day)!;
+}
+
+// Song memories share a color so they're easy to spot on the timeline.
+const SONG_MEMORY_COLOR = ENTRY_COLORS[5];
+
+/** Saves how the day's song made the user feel as a memory, once the round is over. */
+export function saveSonglessMemory(userId: string, playlistId: string, day: string, feeling: string): SonglessRound {
+  const round = readRound(userId, playlistId, day);
+  if (!round) throw new RoundNotFoundError('No song for that playlist on that day');
+  if (!round.song) throw new RoundStateError('Finish guessing the song first');
+  if (round.memoryId) throw new RoundStateError('That song already has a memory');
+
+  const entry = addEntry(userId, {
+    kind: 'memory',
+    title: `${round.song.title} · ${round.song.artist}`,
+    description: feeling,
+    tag: 'song of the day',
+    color: SONG_MEMORY_COLOR,
+    createdAt: new Date().toISOString(),
+  });
+  setRoundMemory.run(entry.id, userId, playlistId, day);
+  return { ...round, memoryId: entry.id };
 }
 
 export class PlaylistNotFoundError extends Error {}
 
-/** Reads the playlist behind a shared link and saves the songs that have a preview, replacing the previous one. */
+/**
+ * Reads the playlist behind a shared link, saves the songs that have a preview and makes it the one being played.
+ * Adding a playlist that was added before reloads its songs.
+ */
 export async function importSonglessPlaylist(userId: string, link: string): Promise<SonglessPlaylist> {
-  const playlist = await fetchEmbedPlaylist(parseSpotifyPlaylistId(link)!);
+  const playlistId = parseSpotifyPlaylistId(link)!;
+  const playlist = await fetchEmbedPlaylist(playlistId);
 
   const tracks = playlist.trackList.flatMap((item) => {
     const track = EmbedTrack.safeParse(item);
@@ -75,9 +236,16 @@ export async function importSonglessPlaylist(userId: string, link: string): Prom
     songs.push({ id: track.id, title: track.title, artist: track.artist, previewUrl });
   });
 
-  const result: SonglessPlaylist = { name: playlist.name, songs, skipped: tracks.length - songs.length };
+  const result: SonglessPlaylist = {
+    id: playlistId,
+    link: link.trim(),
+    name: playlist.name,
+    songs,
+    skipped: tracks.length - songs.length,
+  };
   if (songs.length > 0) {
-    upsertPlaylist.run(userId, result.name, JSON.stringify(songs), result.skipped, new Date().toISOString());
+    const now = new Date().toISOString();
+    upsertPlaylist.run(userId, playlistId, result.link, result.name, JSON.stringify(songs), result.skipped, now, now);
   }
   return result;
 }
