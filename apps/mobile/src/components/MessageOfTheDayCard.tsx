@@ -16,7 +16,7 @@ export function MessageOfTheDayCard({ message, onPress }: { message: MessageOfTh
       </View>
       <View className="flex-1">
         <Text className="text-sm font-semibold text-brand">message of the day</Text>
-        <Text numberOfLines={1} className="text-base text-ink">
+        <Text className="text-base text-ink">
           {message.text}
         </Text>
       </View>

@@ -118,9 +118,14 @@ app.get('/today', (c) => {
 
   const userId = c.get('user').id;
   const days = weekOf(date);
+  const stored = getEntriesBetween(userId, days[0]!, addDays(days[6]!, 1));
+  // Occurrences that were edited are already stored; the stored copy replaces the generated one.
+  const storedIds = new Set(stored.map((entry) => entry.id));
   const weekEntries = [
-    ...getEntriesBetween(userId, days[0]!, addDays(days[6]!, 1)),
-    ...getHabits(userId).flatMap((habit) => habitOccurrences(habit, days)),
+    ...stored,
+    ...getHabits(userId)
+      .flatMap((habit) => habitOccurrences(habit, days))
+      .filter((entry) => !storedIds.has(entry.id)),
   ];
   const entriesForDay = weekEntries.filter((entry) => toDateKey(new Date(entry.createdAt)) === dateKey);
   const week = days.map((weekDay) => summarizeDay(weekDay, weekEntries));

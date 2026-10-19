@@ -37,7 +37,7 @@ describe('ledger', () => {
     const { plan, recap } = writeLedger(entries, day, { now: new Date(2026, 9, 19, 15) });
 
     expect(plan.items.map((i) => i.title)).toEqual(['Evening run']);
-    expect(plan.summary).toContain('Next up is Evening run at 7:00, in 4h');
+    expect(plan.summary).toContain('Next up is Evening run at 19:00, in 4h');
     expect(recap.items.map((i) => i.title)).toEqual(['Morning stretch', 'coffee with Ana', 'Deep work', 'calm after the walk']);
     expect(recap.headline.toLowerCase()).toContain('calm');
     expect(recap.summary).toContain("You've written down 1 memory and 1 feeling.");
@@ -80,7 +80,7 @@ describe('ledger', () => {
     const { plan, recap } = writeLedger(entries, day, { now: new Date(2026, 9, 18, 20) });
 
     expect(plan.items).toHaveLength(3);
-    expect(plan.summary).toContain('The day starts with Morning stretch at 7:00.');
+    expect(plan.summary).toContain('The day starts with Morning stretch at 07:00.');
     expect(recap.items).toEqual([]);
   });
 

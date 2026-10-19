@@ -41,6 +41,19 @@ export function habitOccursOn(habit: Habit, day: Date): boolean {
   return repeat.weekdays.includes(day.getDay()) && weeksBetween(start, day) % repeat.interval === 0;
 }
 
+/** Id of one day's occurrence of a repeating habit: "<habitId>@YYYY-MM-DD". */
+export function occurrenceId(habitId: string, day: Date): string {
+  return `${habitId}@${toDateKey(day)}`;
+}
+
+/** Splits an occurrence id back into its habit and day, or null for a plain entry id. */
+export function parseOccurrenceId(id: string): { habitId: string; day: Date } | null {
+  const at = id.lastIndexOf('@');
+  if (at <= 0) return null;
+  const day = fromDateKey(id.slice(at + 1));
+  return day ? { habitId: id.slice(0, at), day } : null;
+}
+
 /** The habit's occurrences on `days`, shaped as entries so they sit on the timeline next to everything else. */
 export function habitOccurrences(habit: Habit, days: Date[]): Entry[] {
   return days.flatMap((day) => {
@@ -49,7 +62,7 @@ export function habitOccurrences(habit: Habit, days: Date[]): Entry[] {
     if (!range) return [];
     return [
       {
-        id: `${habit.id}@${toDateKey(day)}`,
+        id: occurrenceId(habit.id, day),
         kind: 'habit',
         title: habit.title,
         tag: habit.tag,

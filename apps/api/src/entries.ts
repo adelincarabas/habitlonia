@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import {
+  habitOccurrences,
   MAX_PHOTOS_PER_ENTRY,
+  parseOccurrenceId,
   type CreateEntryInput,
   type Entry,
   type EntryDetail,
@@ -9,6 +11,7 @@ import {
   type UpdateEntryInput,
 } from '@habitlonia/shared';
 import { db } from './db';
+import { getHabit } from './habits';
 
 type EntryRow = {
   id: string;
@@ -32,6 +35,8 @@ const toEntry = (row: EntryRow): Entry => ({
   color: row.color,
   createdAt: row.created_at,
   endsAt: row.ends_at ?? undefined,
+  // A habit occurrence that got a description or photos is stored under its occurrence id.
+  habitId: parseOccurrenceId(row.id)?.habitId,
 });
 
 const toPhoto = (row: PhotoRow): EntryPhoto => ({
@@ -65,6 +70,20 @@ const selectPhotoData = db.prepare('SELECT mime_type, data FROM entry_photos WHE
 const countPhotos = db.prepare('SELECT COUNT(*) AS n FROM entry_photos WHERE entry_id = ?');
 const deletePhoto = db.prepare('DELETE FROM entry_photos WHERE id = ? AND entry_id = ?');
 
+function insert(userId: string, entry: Entry) {
+  insertEntry.run(
+    entry.id,
+    userId,
+    entry.kind,
+    entry.title,
+    entry.description ?? null,
+    entry.tag ?? null,
+    entry.color,
+    entry.createdAt,
+    entry.endsAt ?? null,
+  );
+}
+
 export function addEntry(userId: string, input: CreateEntryInput): Entry {
   const entry: Entry = {
     id: randomUUID(),
@@ -77,17 +96,7 @@ export function addEntry(userId: string, input: CreateEntryInput): Entry {
     createdAt: new Date(input.createdAt).toISOString(),
     endsAt: input.endsAt ? new Date(input.endsAt).toISOString() : undefined,
   };
-  insertEntry.run(
-    entry.id,
-    userId,
-    entry.kind,
-    entry.title,
-    entry.description ?? null,
-    entry.tag ?? null,
-    entry.color,
-    entry.createdAt,
-    entry.endsAt ?? null,
-  );
+  insert(userId, entry);
   return entry;
 }
 
@@ -97,9 +106,30 @@ export function getEntriesBetween(userId: string, from: Date, to: Date): Entry[]
   return rows.map(toEntry);
 }
 
-function findEntry(userId: string, id: string): Entry | null {
+function findStored(userId: string, id: string): Entry | null {
   const row = selectOne.get(id, userId) as EntryRow | undefined;
   return row ? toEntry(row) : null;
+}
+
+/** The generated entry for a habit occurrence id, if the habit is the user's and lands on that day. */
+function findOccurrence(userId: string, id: string): Entry | null {
+  const parsed = parseOccurrenceId(id);
+  const habit = parsed && getHabit(userId, parsed.habitId);
+  if (!parsed || !habit) return null;
+  return habitOccurrences(habit, [parsed.day]).find((e) => e.id === id) ?? null;
+}
+
+function findEntry(userId: string, id: string): Entry | null {
+  return findStored(userId, id) ?? findOccurrence(userId, id);
+}
+
+/** Like findEntry, but saves a habit occurrence as a real entry first so it can be edited. */
+function findOrStoreEntry(userId: string, id: string): Entry | null {
+  const stored = findStored(userId, id);
+  if (stored) return stored;
+  const occurrence = findOccurrence(userId, id);
+  if (occurrence) insert(userId, occurrence);
+  return occurrence;
 }
 
 /** Null when the entry doesn't exist or belongs to someone else; callers can't tell which. */
@@ -111,7 +141,7 @@ export function getEntryDetail(userId: string, id: string): EntryDetail | null {
 }
 
 export function updateEntry(userId: string, id: string, input: UpdateEntryInput): Entry | null {
-  const entry = findEntry(userId, id);
+  const entry = findOrStoreEntry(userId, id);
   if (!entry) return null;
   const title = input.title ?? entry.title;
   // Present-but-empty clears the description; absent leaves it alone.
@@ -123,7 +153,7 @@ export function updateEntry(userId: string, id: string, input: UpdateEntryInput)
 export class TooManyPhotosError extends Error {}
 
 export function addPhoto(userId: string, entryId: string, mimeType: string, data: Buffer): EntryPhoto | null {
-  if (!findEntry(userId, entryId)) return null;
+  if (!findOrStoreEntry(userId, entryId)) return null;
   const { n } = countPhotos.get(entryId) as { n: number };
   if (n >= MAX_PHOTOS_PER_ENTRY) throw new TooManyPhotosError();
   const row: PhotoRow = { id: randomUUID(), created_at: new Date().toISOString() };
@@ -133,7 +163,7 @@ export function addPhoto(userId: string, entryId: string, mimeType: string, data
 
 /** False when the entry isn't the user's or the photo isn't on it. */
 export function removePhoto(userId: string, entryId: string, photoId: string): boolean {
-  if (!findEntry(userId, entryId)) return false;
+  if (!findStored(userId, entryId)) return false;
   return deletePhoto.run(photoId, entryId).changes > 0;
 }
 
