@@ -50,6 +50,11 @@ missed (last week, month or 3 months), and its calendar button opens a
 year view where days with a habit done are blue; tapping a day opens that day's Rundown. Both read
 `/history?from=…&to=…`.
 
+Progress: above the chart, the profile shows a habit health score, a level and eight milestones, all from
+`/progress` (rules in `packages/shared/src/rules/progress.ts`). It's kept gentle on purpose. The score (0–100) is a
+done rate over the last 28 days where older days count less, so a missed day fades. Days with nothing planned don't
+count either way. Levels only count check-offs, milestones stay once earned, and there's no streak counter to break.
+
 Put API secrets in `apps/api/.env` (git-ignored; see `.env.example`). `pnpm dev:api` loads it.
 
 | Env var (API) | Purpose |

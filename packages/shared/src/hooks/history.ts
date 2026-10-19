@@ -11,3 +11,12 @@ export function useHabitHistory(from: Date, to: Date) {
   const toKey = toDateKey(to);
   return useQuery({ queryKey: historyKey(fromKey, toKey), queryFn: () => api.getHabitHistory(fromKey, toKey) });
 }
+
+// Under 'history' so checking a habit off (which invalidates ['history']) refreshes it too.
+export const progressKey = ['history', 'progress'] as const;
+
+/** Health score, level and milestones, worked out from all of the user's habit history. */
+export function useProgress() {
+  const api = useApi();
+  return useQuery({ queryKey: progressKey, queryFn: () => api.getProgress() });
+}

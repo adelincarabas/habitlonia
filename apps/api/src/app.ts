@@ -10,6 +10,7 @@ import {
   fromDateKey,
   habitHistory,
   habitOccurrences,
+  habitProgress,
   ImportSonglessPlaylistInput,
   MAX_HISTORY_DAYS,
   MAX_PHOTO_BYTES,
@@ -20,6 +21,7 @@ import {
   weekOf,
   type Entry,
   type HabitHistoryResponse,
+  type ProgressResponse,
   SonglessMemoryInput,
   SonglessTryInput,
   type OkResponse,
@@ -32,6 +34,7 @@ import {
   addPhoto,
   getEntriesBetween,
   getEntryDetail,
+  getFirstHabitEntryAt,
   getPhotoData,
   removePhoto,
   TooManyPhotosError,
@@ -111,6 +114,7 @@ app.use('/entries', requireAuth);
 app.use('/entries/*', requireAuth);
 app.use('/habits', requireAuth);
 app.use('/history', requireAuth);
+app.use('/progress', requireAuth);
 app.use('/focus/*', requireAuth);
 app.use('/songless', requireAuth);
 app.use('/songless/playlist', requireAuth);
@@ -180,6 +184,23 @@ app.get('/history', (c) => {
   const response: HabitHistoryResponse = {
     days: habitHistory(entriesOn(c.get('user').id, days), days, new Date()),
   };
+
+  return c.json(response);
+});
+
+// GET /progress
+// Habit health score, level and milestones for the profile, from every day since the first habit.
+app.get('/progress', (c) => {
+  const userId = c.get('user').id;
+  const today = new Date();
+  const starts = [
+    ...getHabits(userId).map((habit) => fromDateKey(habit.startsOn)!),
+    getFirstHabitEntryAt(userId),
+  ].filter((day): day is Date => day !== null && day <= today);
+  const first = starts.length ? new Date(Math.min(...starts.map((day) => day.getTime()))) : today;
+  const days = daysBetween(first, today);
+
+  const response: ProgressResponse = habitProgress(habitHistory(entriesOn(userId, days), days, today), toDateKey(today));
 
   return c.json(response);
 });

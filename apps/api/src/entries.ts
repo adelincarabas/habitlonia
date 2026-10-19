@@ -58,6 +58,9 @@ const selectBetween = db.prepare(
    ORDER BY created_at`,
 );
 const selectOne = db.prepare(`SELECT ${ENTRY_COLUMNS} FROM entries WHERE id = ? AND user_id = ?`);
+const selectFirstHabit = db.prepare(
+  `SELECT MIN(created_at) AS first FROM entries WHERE user_id = ? AND kind = 'habit'`,
+);
 const updateOne = db.prepare(
   `UPDATE entries SET title = ?, description = ?, done = ? WHERE id = ? AND user_id = ?`,
 );
@@ -107,6 +110,12 @@ export function addEntry(userId: string, input: CreateEntryInput): Entry {
 export function getEntriesBetween(userId: string, from: Date, to: Date): Entry[] {
   const rows = selectBetween.all(userId, from.toISOString(), to.toISOString()) as EntryRow[];
   return rows.map(toEntry);
+}
+
+/** When the user's earliest stored habit happened, or null if they have none. */
+export function getFirstHabitEntryAt(userId: string): Date | null {
+  const row = selectFirstHabit.get(userId) as { first: string | null };
+  return row.first ? new Date(row.first) : null;
 }
 
 function findStored(userId: string, id: string): Entry | null {
