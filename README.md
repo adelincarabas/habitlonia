@@ -44,7 +44,9 @@ without being checked off.
 
 Habits are checked off with the circle next to them on Today (or on their detail screen). A repeating
 habit's occurrence is saved as an entry the first time it's checked, like when it's edited. The profile
-shows a chart of habits done vs. missed (last week, month or 3 months), and its calendar button opens a
+shows a GitHub-style consistency heatmap of the past year (darker squares mean more of that day's habits were
+done, with current/longest streaks; days with nothing due don't break a streak), a chart of habits done vs.
+missed (last week, month or 3 months), and its calendar button opens a
 year view where days with a habit done are blue; tapping a day opens that day's Rundown. Both read
 `/history?from=…&to=…`.
 

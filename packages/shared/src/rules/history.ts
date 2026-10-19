@@ -69,3 +69,65 @@ export function monthGrid(year: number, month: number): (Date | null)[][] {
   while (cells.length % 7) cells.push(null);
   return Array.from({ length: cells.length / 7 }, (_, row) => cells.slice(row * 7, row * 7 + 7));
 }
+
+/** Columns on the consistency heatmap: a year, plus the week in progress. */
+export const HEATMAP_WEEKS = 53;
+
+/**
+ * The consistency heatmap as Sunday-first week columns, oldest first, ending with the week of `today`.
+ * Days after today are null.
+ */
+export function heatmapWeeks(today: Date): (Date | null)[][] {
+  const last = toDateKey(today);
+  const start = addDays(today, -today.getDay() - (HEATMAP_WEEKS - 1) * 7);
+  return Array.from({ length: HEATMAP_WEEKS }, (_, week) =>
+    Array.from({ length: 7 }, (_, weekday) => {
+      const day = addDays(start, week * 7 + weekday);
+      return toDateKey(day) <= last ? day : null;
+    }),
+  );
+}
+
+/** Shade steps on the heatmap, from "nothing done" to "everything done". */
+export type HeatLevel = 0 | 1 | 2 | 3 | 4;
+
+/** How much of the day's habits got done: 0 when none were, 4 when all of them were. */
+export function heatLevel(day: HabitDay | undefined): HeatLevel {
+  if (!day?.done) return 0;
+  const rate = day.done / (day.done + day.missed);
+  if (rate === 1) return 4;
+  if (rate >= 2 / 3) return 3;
+  if (rate >= 1 / 3) return 2;
+  return 1;
+}
+
+/** Which heatmap columns start a new month, for the labels above them. */
+export function heatmapMonthStarts(weeks: (Date | null)[][]): { week: number; month: number }[] {
+  const starts: { week: number; month: number }[] = [];
+  weeks.forEach((days, week) => {
+    const month = days[0]!.getMonth();
+    if (week === 0 || month !== weeks[week - 1]![0]!.getMonth()) starts.push({ week, month });
+  });
+  return starts;
+}
+
+/**
+ * Runs of days with at least one habit done, `days` being consecutive and oldest first.
+ * A day where habits were missed and none were done ends a run; a day with nothing due neither
+ * adds to it nor ends it, so weekly habits and today-in-progress don't break a streak.
+ */
+export function habitStreaks(days: HabitDay[]): { current: number; longest: number; activeDays: number } {
+  let run = 0;
+  let longest = 0;
+  let activeDays = 0;
+  for (const day of days) {
+    if (day.done) {
+      run++;
+      activeDays++;
+      longest = Math.max(longest, run);
+    } else if (day.missed) {
+      run = 0;
+    }
+  }
+  return { current: run, longest, activeDays };
+}

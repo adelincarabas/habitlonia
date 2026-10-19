@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { Entry } from '../types';
-import { daysBetween, habitHistory, historyBars, monthGrid } from './history';
+import {
+  HEATMAP_WEEKS,
+  daysBetween,
+  habitHistory,
+  habitStreaks,
+  heatLevel,
+  heatmapMonthStarts,
+  heatmapWeeks,
+  historyBars,
+  monthGrid,
+} from './history';
 
 const habit = (id: string, day: number, start: number, done?: boolean): Entry => ({
   id,
@@ -53,5 +63,42 @@ describe('history', () => {
     expect(grid[0]!.slice(0, 4)).toEqual([null, null, null, null]);
     expect(grid[0]![4]?.getDate()).toBe(1);
     expect(grid.at(-1)!.filter(Boolean).at(-1)?.getDate()).toBe(31);
+  });
+
+  it('lays the heatmap out as a year of Sunday-first weeks ending today', () => {
+    // 2026-10-19 is a Monday.
+    const weeks = heatmapWeeks(new Date(2026, 9, 19));
+
+    expect(weeks).toHaveLength(HEATMAP_WEEKS);
+    expect(weeks.every((week) => week.length === 7)).toBe(true);
+    expect(weeks[0]![0]).toEqual(new Date(2025, 9, 19));
+    expect(weeks.at(-1)!.map((day) => day?.getDate() ?? null)).toEqual([18, 19, null, null, null, null, null]);
+  });
+
+  it('shades a day by how much of it got done', () => {
+    expect(heatLevel(undefined)).toBe(0);
+    expect(heatLevel({ date: '2026-10-19', done: 0, missed: 0 })).toBe(0);
+    expect(heatLevel({ date: '2026-10-19', done: 0, missed: 3 })).toBe(0);
+    expect(heatLevel({ date: '2026-10-19', done: 1, missed: 3 })).toBe(1);
+    expect(heatLevel({ date: '2026-10-19', done: 1, missed: 1 })).toBe(2);
+    expect(heatLevel({ date: '2026-10-19', done: 2, missed: 1 })).toBe(3);
+    expect(heatLevel({ date: '2026-10-19', done: 2, missed: 0 })).toBe(4);
+  });
+
+  it('labels the heatmap columns where a month starts', () => {
+    const starts = heatmapMonthStarts(heatmapWeeks(new Date(2026, 9, 19)));
+
+    expect(starts[0]).toEqual({ week: 0, month: 9 });
+    // November 2025's first Sunday is the 2nd, two weeks after 2025-10-19.
+    expect(starts[1]).toEqual({ week: 2, month: 10 });
+    expect(starts).toHaveLength(13);
+  });
+
+  it('counts streaks, skipping days with nothing due', () => {
+    const day = (done: number, missed: number) => ({ date: '', done, missed });
+    const days = [day(1, 0), day(2, 1), day(0, 1), day(1, 0), day(0, 0), day(1, 2), day(1, 0), day(0, 0)];
+
+    expect(habitStreaks(days)).toEqual({ current: 3, longest: 3, activeDays: 5 });
+    expect(habitStreaks([day(1, 0), day(1, 0), day(0, 2)])).toEqual({ current: 0, longest: 2, activeDays: 2 });
   });
 });

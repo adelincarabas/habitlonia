@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ConsistencyHeatmap } from '@/components/ConsistencyHeatmap';
 import { HabitChart } from '@/components/HabitChart';
 import { IconButton } from '@/components/IconButton';
 import { SegmentedTabs } from '@/components/SegmentedTabs';
@@ -47,6 +48,10 @@ export default function ProfileScreen() {
           </View>
 
           <View className="pt-10">
+            <ConsistencyHeatmap />
+          </View>
+
+          <View className="pt-8">
             <HabitChart />
           </View>
 
