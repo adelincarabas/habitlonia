@@ -22,6 +22,9 @@ const LOBES: Record<FeelingFamilyKey, { cx: number; cy: number; r: number; x: nu
   stress: { cx: 266, cy: 198, r: 40, x: 260, y: 184 },
 };
 
+/** Radius of the invisible tap target over each label; small enough that no two overlap. */
+const HIT = 30;
+
 /** Two little folds around a label, so the lobes read as brain rather than bubbles. */
 function folds(x: number, y: number) {
   return `M${x - 22} ${y - 20} q6 -8 12 0 t12 0 t12 0 M${x - 16} ${y + 16} q6 7 12 0 t12 0`;
@@ -45,57 +48,79 @@ export function FeelingPicker({ value, onChange }: Props) {
     <View className="gap-4 rounded-3xl bg-surface p-4">
       <Text className="text-center font-hand text-3xl text-ink">How does your mind feel?</Text>
 
-      <Svg viewBox="0 0 340 250" width="100%" style={{ aspectRatio: 340 / 250 }}>
-        <Defs>
-          <ClipPath id="brain">
-            <Path d={BRAIN} />
-          </ClipPath>
-        </Defs>
-        <Path d={STEM} fill={colors.emptyDay} />
-        <Path d={BRAIN} fill={colors.surface} />
-        <Path d={BRAIN} fill={colors.inkFaint} fillOpacity={0.25} />
-        <G clipPath="url(#brain)">
+      <View style={{ aspectRatio: 340 / 250 }}>
+        <Svg viewBox="0 0 340 250" width="100%" height="100%">
+          <Defs>
+            <ClipPath id="brain">
+              <Path d={BRAIN} />
+            </ClipPath>
+          </Defs>
+          <Path d={STEM} fill={colors.emptyDay} />
+          <Path d={BRAIN} fill={colors.surface} />
+          <Path d={BRAIN} fill={colors.inkFaint} fillOpacity={0.25} />
+          <G clipPath="url(#brain)">
+            {FEELING_FAMILIES.map((f) => {
+              const { cx, cy, r } = LOBES[f.key];
+              const on = f.key === familyKey;
+              return (
+                <G key={f.key}>
+                  <Circle cx={cx} cy={cy} r={r} fill={colors.surface} stroke={colors.surface} strokeWidth={5} />
+                  <Circle cx={cx} cy={cy} r={r} fill={f.color} fillOpacity={on ? 1 : familyKey ? 0.1 : 0.24} />
+                </G>
+              );
+            })}
+          </G>
           {FEELING_FAMILIES.map((f) => {
-            const { cx, cy, r } = LOBES[f.key];
+            const { x, y } = LOBES[f.key];
             const on = f.key === familyKey;
+            const ink = on ? '#FFFFFF' : f.color;
             return (
-              <G key={f.key} onPress={() => setFamilyKey(f.key)}>
-                <Circle cx={cx} cy={cy} r={r} fill={colors.surface} stroke={colors.surface} strokeWidth={5} />
-                <Circle cx={cx} cy={cy} r={r} fill={f.color} fillOpacity={on ? 1 : familyKey ? 0.1 : 0.24} />
+              <G key={f.key}>
+                <Path
+                  d={folds(x, y)}
+                  fill="none"
+                  stroke={ink}
+                  strokeOpacity={on ? 0.55 : 0.3}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                />
+                <SvgText
+                  x={x}
+                  y={y + 4}
+                  textAnchor="middle"
+                  fontSize={13}
+                  fontWeight="600"
+                  fill={ink}
+                  fillOpacity={familyKey && !on ? 0.45 : 1}
+                >
+                  {f.label}
+                </SvgText>
               </G>
             );
           })}
-        </G>
+          <Path d={BRAIN} fill="none" stroke={colors.inkFaint} strokeWidth={2} />
+        </Svg>
+        {/* Taps go to plain views over the drawing: SVG press handlers leak responder props to the DOM on web. */}
         {FEELING_FAMILIES.map((f) => {
           const { x, y } = LOBES[f.key];
-          const on = f.key === familyKey;
-          const ink = on ? '#FFFFFF' : f.color;
           return (
-            <G key={f.key} onPress={() => setFamilyKey(f.key)}>
-              <Path
-                d={folds(x, y)}
-                fill="none"
-                stroke={ink}
-                strokeOpacity={on ? 0.55 : 0.3}
-                strokeWidth={2}
-                strokeLinecap="round"
-              />
-              <SvgText
-                x={x}
-                y={y + 4}
-                textAnchor="middle"
-                fontSize={13}
-                fontWeight="600"
-                fill={ink}
-                fillOpacity={familyKey && !on ? 0.45 : 1}
-              >
-                {f.label}
-              </SvgText>
-            </G>
+            <Pressable
+              key={f.key}
+              accessibilityRole="button"
+              accessibilityLabel={f.label}
+              accessibilityState={{ selected: f.key === familyKey }}
+              onPress={() => setFamilyKey(f.key)}
+              className="absolute rounded-full"
+              style={{
+                left: `${((x - HIT) / 340) * 100}%`,
+                top: `${((y - HIT) / 250) * 100}%`,
+                width: `${((2 * HIT) / 340) * 100}%`,
+                aspectRatio: 1,
+              }}
+            />
           );
         })}
-        <Path d={BRAIN} fill="none" stroke={colors.inkFaint} strokeWidth={2} />
-      </Svg>
+      </View>
 
       {!family && (
         <Text className="text-center text-sm text-ink-muted">Tap the part of your mind that feels loudest right now.</Text>
