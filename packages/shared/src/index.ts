@@ -2,6 +2,7 @@ export * from './types';
 export * from './rules/time';
 export * from './rules/entries';
 export * from './rules/rundown';
+export * from './rules/feelings';
 export * from './rules/habits';
 export * from './rules/history';
 export * from './rules/songless';
