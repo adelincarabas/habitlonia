@@ -11,6 +11,7 @@ import {
   Habit,
   HabitHistoryResponse,
   ImportSonglessPlaylistInput,
+  InsightsResponse,
   ForgotPasswordInput,
   ForgotPasswordResponse,
   LoginInput,
@@ -103,6 +104,8 @@ export function createApiClient(baseUrl: string, options: ApiClientOptions = {})
       request(HabitHistoryResponse, `/history?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
     /** Health score, level and milestones for the profile. */
     getProgress: () => request(ProgressResponse, '/progress'),
+    /** Patterns spotted across recent habits and feelings, strongest first. */
+    getInsights: () => request(InsightsResponse, '/insights'),
     getEntry: (id: string) => request(EntryDetail, `/entries/${encodeURIComponent(id)}`),
     updateEntry: (id: string, input: UpdateEntryInput) =>
       request(Entry, `/entries/${encodeURIComponent(id)}`, {

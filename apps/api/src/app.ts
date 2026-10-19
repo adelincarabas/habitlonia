@@ -7,11 +7,13 @@ import {
   CreateEntryInput,
   CreateHabitInput,
   daysBetween,
+  findInsights,
   fromDateKey,
   habitHistory,
   habitOccurrences,
   habitProgress,
   ImportSonglessPlaylistInput,
+  INSIGHT_DAYS,
   MAX_HISTORY_DAYS,
   MAX_PHOTO_BYTES,
   MAX_PHOTOS_PER_ENTRY,
@@ -22,6 +24,7 @@ import {
   type Entry,
   type HabitHistoryResponse,
   type ProgressResponse,
+  type InsightsResponse,
   SonglessMemoryInput,
   SonglessTryInput,
   type OkResponse,
@@ -115,6 +118,7 @@ app.use('/entries/*', requireAuth);
 app.use('/habits', requireAuth);
 app.use('/history', requireAuth);
 app.use('/progress', requireAuth);
+app.use('/insights', requireAuth);
 app.use('/focus/*', requireAuth);
 app.use('/songless', requireAuth);
 app.use('/songless/playlist', requireAuth);
@@ -201,6 +205,20 @@ app.get('/progress', (c) => {
   const days = daysBetween(first, today);
 
   const response: ProgressResponse = habitProgress(habitHistory(entriesOn(userId, days), days, today), toDateKey(today));
+
+  return c.json(response);
+});
+
+// GET /insights
+// Patterns across the last INSIGHT_DAYS days of habits and feelings, for the profile screen.
+app.get('/insights', (c) => {
+  const now = new Date();
+  const days = daysBetween(addDays(now, 1 - INSIGHT_DAYS), now);
+
+  const response: InsightsResponse = {
+    days: INSIGHT_DAYS,
+    insights: findInsights(entriesOn(c.get('user').id, days), now),
+  };
 
   return c.json(response);
 });

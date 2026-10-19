@@ -213,6 +213,32 @@ export const ProgressResponse = z.object({
 });
 export type ProgressResponse = z.infer<typeof ProgressResponse>;
 
+/** What an insight compares: two habits, the days of the week, or a habit against logged feelings. */
+export const InsightKind = z.enum(['pair', 'weekday', 'feeling']);
+export type InsightKind = z.infer<typeof InsightKind>;
+
+/** A pattern spotted in the user's history, e.g. "You finish Workout 40% more often on days you do Meditate." */
+export const Insight = z.object({
+  kind: InsightKind,
+  /** The finding, in one sentence. */
+  text: z.string(),
+  /** The counts behind it, so it can be checked. */
+  detail: z.string(),
+  /** up: something that helps. down: a weak spot. */
+  tone: z.enum(['up', 'down']),
+  /** Color of the habit it's about, if it's about one. */
+  color: z.string().optional(),
+});
+export type Insight = z.infer<typeof Insight>;
+
+export const InsightsResponse = z.object({
+  /** How many days back the insights look. */
+  days: z.number().int().positive(),
+  /** Strongest first. Empty until there's enough history to say anything. */
+  insights: z.array(Insight),
+});
+export type InsightsResponse = z.infer<typeof InsightsResponse>;
+
 export const User = z.object({
   id: z.string(),
   email: z.string(),

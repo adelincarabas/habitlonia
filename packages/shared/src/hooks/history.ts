@@ -20,3 +20,11 @@ export function useProgress() {
   const api = useApi();
   return useQuery({ queryKey: progressKey, queryFn: () => api.getProgress() });
 }
+
+export const insightsKey = ['insights'] as const;
+
+/** Smart insights over the last few months, e.g. which habits go together and the weakest weekday. */
+export function useInsights() {
+  const api = useApi();
+  return useQuery({ queryKey: insightsKey, queryFn: () => api.getInsights() });
+}

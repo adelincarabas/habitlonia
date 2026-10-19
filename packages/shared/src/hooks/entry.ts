@@ -39,6 +39,7 @@ export function useSetHabitDone() {
       Promise.all([
         qc.invalidateQueries({ queryKey: ['today'] }),
         qc.invalidateQueries({ queryKey: ['history'] }),
+        qc.invalidateQueries({ queryKey: ['insights'] }),
         qc.invalidateQueries({ queryKey: entryKey(id) }),
       ]),
   });
