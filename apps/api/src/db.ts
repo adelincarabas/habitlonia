@@ -96,6 +96,16 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS entry_photos_entry ON entry_photos (entry_id, created_at);
 
+  -- The Spotify playlist each user plays Songless with. Songs are SonglessSong[] as JSON;
+  -- importing another playlist replaces it.
+  CREATE TABLE IF NOT EXISTS songless_playlists (
+    user_id    TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    name       TEXT NOT NULL,
+    songs      TEXT NOT NULL,
+    skipped    INTEGER NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
   -- At most one live reset code per user; asking again replaces it.
   CREATE TABLE IF NOT EXISTS password_resets (
     user_id    TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

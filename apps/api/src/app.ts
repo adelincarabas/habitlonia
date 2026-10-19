@@ -8,6 +8,7 @@ import {
   CreateHabitInput,
   fromDateKey,
   habitOccurrences,
+  ImportSonglessPlaylistInput,
   MAX_PHOTO_BYTES,
   MAX_PHOTOS_PER_ENTRY,
   summarizeDay,
@@ -15,6 +16,7 @@ import {
   UpdateEntryInput,
   weekOf,
   type OkResponse,
+  type SonglessResponse,
   type TodayResponse,
 } from '@habitlonia/shared';
 import { authRoutes, requireAuth, type AuthEnv } from './auth';
@@ -29,6 +31,13 @@ import {
   updateEntry,
 } from './entries';
 import { addHabit, getHabits } from './habits';
+import {
+  getArtworkUrl,
+  getPreviewUrl,
+  getSonglessPlaylist,
+  importSonglessPlaylist,
+  PlaylistNotFoundError,
+} from './songless';
 import { getFocus, getMessageOfTheDay, toggleFocus } from './store';
 
 export const app = new Hono<AuthEnv>();
@@ -58,12 +67,39 @@ app.get('/photos/:id', (c) => {
   });
 });
 
+// GET /songless/artwork/:trackId
+// Redirects to a Spotify song's album cover. Public so <Image> can load it, like photos.
+app.get('/songless/artwork/:trackId', async (c) => {
+  const url = await getArtworkUrl(c.req.param('trackId'));
+
+  if (!url) {
+    return c.json({ error: 'artwork not found' }, 404);
+  }
+
+  return c.redirect(url, 302);
+});
+
+// GET /songless/preview/:id
+// Redirects to the song's 30s preview on Deezer, for the few songs Spotify has no preview for.
+// Public for the same reason as photos: audio players can't send headers.
+app.get('/songless/preview/:id', async (c) => {
+  const url = await getPreviewUrl(c.req.param('id'));
+
+  if (!url) {
+    return c.json({ error: 'preview not found' }, 404);
+  }
+
+  return c.redirect(url, 302);
+});
+
 // Everything below needs a logged-in user.
 app.use('/today', requireAuth);
 app.use('/entries', requireAuth);
 app.use('/entries/*', requireAuth);
 app.use('/habits', requireAuth);
 app.use('/focus/*', requireAuth);
+app.use('/songless', requireAuth);
+app.use('/songless/playlist', requireAuth);
 
 // GET /today?date=2026-10-18
 // Returns everything the Today screen needs. If no date is given, uses today.
@@ -219,4 +255,39 @@ app.post('/focus/:id/toggle', (c) => {
   }
 
   return c.json(session);
+});
+
+// GET /songless
+// The playlist the Songless game on the Today screen plays from, or null before one is picked.
+app.get('/songless', (c) => {
+  const response: SonglessResponse = { playlist: getSonglessPlaylist(c.get('user').id) };
+  return c.json(response);
+});
+
+// PUT /songless/playlist
+// Body is { link } with a Spotify playlist link, as copied from Spotify's Share menu.
+app.put('/songless/playlist', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const result = ImportSonglessPlaylistInput.safeParse(body);
+
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0]?.message ?? 'invalid input' }, 400);
+  }
+
+  let playlist;
+  try {
+    playlist = await importSonglessPlaylist(c.get('user').id, result.data.link);
+  } catch (err) {
+    if (err instanceof PlaylistNotFoundError) {
+      return c.json({ error: err.message }, 404);
+    }
+    throw err;
+  }
+
+  if (playlist.songs.length === 0) {
+    return c.json({ error: 'None of the songs in that playlist have a preview to play' }, 422);
+  }
+
+  const response: SonglessResponse = { playlist };
+  return c.json(response);
 });

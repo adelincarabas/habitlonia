@@ -188,3 +188,45 @@ export const TodayResponse = z.object({
   week: z.array(DaySummary),
 });
 export type TodayResponse = z.infer<typeof TodayResponse>;
+
+/** How much of the song each try unlocks, in seconds. A wrong guess or a skip moves to the next one. */
+export const SONGLESS_CLIP_SECONDS = [0.1, 0.5, 1, 2, 4, 8] as const;
+
+/** A song from the player's Spotify playlist that has a preview to play. */
+export const SonglessSong = z.object({
+  /** Spotify track id. */
+  id: z.string(),
+  title: z.string(),
+  artist: z.string(),
+  /** The 30s preview: a full URL, or a path on the API (e.g. "/songless/preview/<id>") that redirects to one. */
+  previewUrl: z.string(),
+});
+export type SonglessSong = z.infer<typeof SonglessSong>;
+
+export const SonglessPlaylist = z.object({
+  name: z.string(),
+  songs: z.array(SonglessSong),
+  /** Playlist tracks that had no preview anywhere and were left out. */
+  skipped: z.number().int().nonnegative(),
+});
+export type SonglessPlaylist = z.infer<typeof SonglessPlaylist>;
+
+export const SonglessResponse = z.object({ playlist: SonglessPlaylist.nullable() });
+export type SonglessResponse = z.infer<typeof SonglessResponse>;
+
+/**
+ * The id in a Spotify playlist link, as copied from the app's Share menu:
+ * https://open.spotify.com/playlist/<id>?si=…, the /intl-xx/ variant, or spotify:playlist:<id>.
+ */
+export function parseSpotifyPlaylistId(link: string): string | null {
+  const match = link.trim().match(/(?:open\.spotify\.com\/(?:intl-[a-z-]+\/)?(?:embed\/)?playlist\/|spotify:playlist:)([A-Za-z0-9]{22})/);
+  return match ? match[1]! : null;
+}
+
+/** A playlist link pasted into the app. Anyone can paste one: no Spotify login is needed. */
+export const ImportSonglessPlaylistInput = z.object({
+  link: z.string().trim().max(500).refine((link) => parseSpotifyPlaylistId(link) !== null, {
+    message: "That doesn't look like a Spotify playlist link",
+  }),
+});
+export type ImportSonglessPlaylistInput = z.infer<typeof ImportSonglessPlaylistInput>;

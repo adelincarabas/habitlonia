@@ -9,12 +9,15 @@ import {
   EntryPhoto,
   FocusSession,
   Habit,
+  ImportSonglessPlaylistInput,
   ForgotPasswordInput,
   ForgotPasswordResponse,
   LoginInput,
   OkResponse,
   RegisterInput,
   ResetPasswordInput,
+  SonglessResponse,
+  type SonglessSong,
   TodayResponse,
   UpdateEntryInput,
   User,
@@ -107,6 +110,17 @@ export function createApiClient(baseUrl: string, options: ApiClientOptions = {})
     /** Full URL for an <Image> source. */
     photoUrl: (photo: EntryPhoto) => `${baseUrl}${photo.path}`,
     toggleFocus: (id: string) => request(FocusSession, `/focus/${id}/toggle`, { method: 'POST' }),
+    getSongless: () => request(SonglessResponse, '/songless'),
+    importSonglessPlaylist: (input: ImportSonglessPlaylistInput) =>
+      request(SonglessResponse, '/songless/playlist', {
+        method: 'PUT',
+        body: JSON.stringify(ImportSonglessPlaylistInput.parse(input)),
+      }),
+    /** Full URL of a song's 30s preview, for the audio player. */
+    songlessPreviewUrl: (song: SonglessSong) =>
+      song.previewUrl.startsWith('/') ? `${baseUrl}${song.previewUrl}` : song.previewUrl,
+    /** The song's album cover, for an <Image> source. */
+    songlessArtworkUrl: (song: SonglessSong) => `${baseUrl}/songless/artwork/${encodeURIComponent(song.id)}`,
   };
 }
 

@@ -1,15 +1,15 @@
 import { TODAY_TABS, defaultKindForTab, toDateKey, weekOf, type TodayTabKey } from '@habitlonia/shared';
-import { useNow, useToday, useTodayEntries, useToggleFocus } from '@habitlonia/shared/hooks';
+import { useNow, useSongless, useToday, useTodayEntries } from '@habitlonia/shared/hooks';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CaptureBar } from '@/components/CaptureBar';
-import { FocusCard } from '@/components/FocusCard';
 import { GreetingRow } from '@/components/GreetingRow';
 import { IconButton } from '@/components/IconButton';
 import { MessageOfTheDayCard } from '@/components/MessageOfTheDayCard';
 import { SegmentedTabs } from '@/components/SegmentedTabs';
+import { SonglessCard, SonglessSetupCard } from '@/components/SonglessCard';
 import { Timeline } from '@/components/Timeline';
 import { WeekStrip } from '@/components/WeekStrip';
 import { useAuth } from '@/lib/auth';
@@ -20,7 +20,7 @@ export default function TodayScreen() {
 
   const today = useToday(selectedDay);
   const entries = useTodayEntries(today.data, tab);
-  const toggleFocus = useToggleFocus();
+  const songless = useSongless();
   const now = useNow();
   const { state } = useAuth();
   const name = state.status === 'signedIn' ? state.user.name : '';
@@ -28,7 +28,7 @@ export default function TodayScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface-sunken" edges={['top']}>
       <View className="w-full max-w-md flex-1 self-center">
-        <ScrollView contentContainerClassName="gap-5 pb-40">
+        <ScrollView contentContainerClassName="gap-5 pb-40" keyboardShouldPersistTaps="handled">
           <View className="flex-row items-center justify-between px-4 pt-2">
             <IconButton icon="play-outline" label="Replay" variant="raised" />
             <View className="items-center">
@@ -55,12 +55,12 @@ export default function TodayScreen() {
           )}
 
           {today.data?.messageOfTheDay && <MessageOfTheDayCard message={today.data.messageOfTheDay} />}
-          {today.data?.focus && (
-            <FocusCard
-              session={today.data.focus}
-              onToggle={() => toggleFocus.mutate(today.data.focus!.id)}
-            />
-          )}
+          {songless.data &&
+            (songless.data.playlist ? (
+              <SonglessCard playlist={songless.data.playlist} onChangePlaylist={() => router.push('/songless')} />
+            ) : (
+              <SonglessSetupCard onSetUp={() => router.push('/songless')} />
+            ))}
 
           {today.data && (
             <>
