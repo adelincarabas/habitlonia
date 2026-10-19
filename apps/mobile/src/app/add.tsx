@@ -22,6 +22,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DictationButton } from '@/components/DictationButton';
+import { FeelingPicker } from '@/components/FeelingPicker';
 import { IconButton } from '@/components/IconButton';
 import { SegmentedTabs } from '@/components/SegmentedTabs';
 import { TimeField } from '@/components/TimeField';
@@ -70,6 +71,7 @@ export default function AddEntryScreen() {
   const [weekdays, setWeekdays] = useState(() => [day.getDay()]);
 
   const isHabit = kind === 'habit';
+  const isFeeling = kind === 'feeling';
   const repeat = isHabit ? repeatFor(repeatOption, weekdays) : null;
   const startMinutes = parseClock(start);
   const endMinutes = parseClock(end);
@@ -132,15 +134,25 @@ export default function AddEntryScreen() {
             <SegmentedTabs tabs={ENTRY_KIND_OPTIONS} value={kind} onChange={setKind} />
           </View>
 
+          {isFeeling && (
+            <FeelingPicker
+              value={tag}
+              onChange={(feeling, feelingColor) => {
+                setTag(feeling);
+                setColor(feelingColor);
+              }}
+            />
+          )}
+
           <View className="gap-1.5">
             <Text className="text-xs font-medium text-ink-muted">Title</Text>
             <TextInput
               accessibilityLabel="Title"
               value={title}
               onChangeText={setTitle}
-              placeholder={TITLE_PLACEHOLDERS[kind]}
+              placeholder={isFeeling && tag ? `what made you feel ${tag}?` : TITLE_PLACEHOLDERS[kind]}
               placeholderTextColor={colors.inkFaint}
-              autoFocus
+              autoFocus={!isFeeling}
               className="rounded-2xl bg-surface px-4 py-3 text-base text-ink"
             />
           </View>
@@ -162,16 +174,18 @@ export default function AddEntryScreen() {
             </View>
           </View>
 
-          <View className="gap-1.5">
-            <Text className="text-xs font-medium text-ink-muted">Tag (optional)</Text>
-            <TextInput
-              value={tag}
-              onChangeText={setTag}
-              placeholder={TAG_PLACEHOLDERS[kind]}
-              placeholderTextColor={colors.inkFaint}
-              className="rounded-2xl bg-surface px-4 py-3 text-base text-ink"
-            />
-          </View>
+          {!isFeeling && (
+            <View className="gap-1.5">
+              <Text className="text-xs font-medium text-ink-muted">Tag (optional)</Text>
+              <TextInput
+                value={tag}
+                onChangeText={setTag}
+                placeholder={TAG_PLACEHOLDERS[kind]}
+                placeholderTextColor={colors.inkFaint}
+                className="rounded-2xl bg-surface px-4 py-3 text-base text-ink"
+              />
+            </View>
+          )}
 
           <View className="gap-1.5">
             <Text className="text-xs font-medium text-ink-muted">{repeat ? 'Starting' : 'Day'}</Text>
